@@ -123,7 +123,7 @@
         person.metrics.mood = {value:null,unit:'/5',private:true};
         return person;
       }));
-      return { mission: team.mission, crew, summaries: [], environments: env.latest, source: 'api-app' };
+      return { mission: team.mission, crew, summaries: [], environments: env.latest, source: 'api-app', dataNotice: team.dataNotice || null };
     }
     async loadSynthetic(missionId) {
       this.requireCareTeam();
@@ -150,7 +150,7 @@
         return person;
       }));
       const normalized={...normalizeMission(mission,true),today:data.missionDay};
-      return { mission:normalized,crew,summaries:[],environments:[],source:'api-synthetic',
+      return { mission:normalized,crew,summaries:[],environments:[],source:'api-synthetic',dataNotice:data.dataNotice || null,
         impact:{source:'api-synthetic',label:'Selected synthetic mission API',provenance:'SIMULATED_TELEMETRY',mission:normalized,
           people:analysisPeople.sort((a,b)=>a.id.localeCompare(b.id)),reference:this.baseUrl+'/docs'}};
     }

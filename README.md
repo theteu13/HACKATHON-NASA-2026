@@ -4,6 +4,21 @@ A read-only Ground Control dashboard for the care team, in English, using the Ne
 
 ## Run
 
+The project includes a Python/FastAPI backend. To run the dashboard and API together:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+.\start-backend.ps1
+```
+
+Choose a local password when prompted, then open http://127.0.0.1:8000. Select
+**Connect API** and sign in with `surgeon` and your chosen password. Both bundled
+fictional datasets are available through the API. API documentation is at
+http://127.0.0.1:8000/docs. See [backend setup and limits](backend/README.md).
+
+For a frontend-only preview without Python dependencies:
+
 From this directory:
 
 ```powershell
@@ -14,12 +29,12 @@ Open http://127.0.0.1:4173. In VS Code, select **CosmoMedic: Preview dashboard**
 
 ## Connect the backend
 
-1. Start the upstream FastAPI backend according to its README (normally port 8000).
+1. Start the included backend as above, or the upstream FastAPI backend according to its README (normally port 8000).
 2. Select **Connect API** in the dashboard. Enter the API origin, such as http://127.0.0.1:8000, without an /api suffix.
 3. Choose **CosmoMedic app** or **Synthetic mission** and sign in with an account belonging to that dataset.
 4. Only medical and admin accounts can enter this dashboard. Use **Refresh** to reload or **Disconnect** to return explicitly to demo data.
 
-For local seeded development only, the upstream care-team account is surgeon with password spaceapps2026 (unless changed in backend configuration). Astronaut accounts are rejected by this dashboard.
+The included backend uses the password you configure locally. For local seeded development with the separate upstream backend only, its care-team account is surgeon with password spaceapps2026 (unless changed in backend configuration). Astronaut accounts are rejected by this dashboard.
 
 For deployment, use HTTPS and configure backend CORS to allow the dashboard origin. The dashboard never needs database passwords, a JWT signing secret, or an admin API key. Access tokens remain in memory; page reload returns to the demo.
 
@@ -36,12 +51,46 @@ For deployment, use HTTPS and configure backend CORS to allow the dashboard orig
 
 There is no astronaut mode, personal copilot, family-message panel, or health-data entry form. Old browser-local prototype records are not read, migrated, or deleted. The included demo contains only physical measurement, sleep, and meal logs. All demo records are fictional.
 
+## Project structure
+
+```text
+index.html                 # Dashboard shell and ordered script/style loading
+src/
+  main.js                  # Control events and initial render
+  core/state.js            # Monitoring state and snapshot selection
+  services/health-data.js   # API client and source projections
+  shared/                  # Formatting, icons, portraits and toast messages
+  styles/                  # Theme tokens and base layout
+  features/
+    overview/              # Individual metrics, history and mission metadata
+    connection/            # API sign-in, refresh and disconnect
+    crew/                  # Crew aggregation and team view
+    avatar/                # Body callouts, motion, gaze and review prompts
+    command/               # Mission summary and local cabin/rest simulations
+    mission-impact/        # Analysis engine and comparison view
+    navigation/            # Sidebar navigation and active section tracking
+data/                      # Attributed offline demo datasets
+backend/                   # Python/FastAPI API, configuration and HTTP tests
+start-backend.ps1          # Start the local API and dashboard
+tests/                     # Node.js unit and dashboard integration tests
+```
+
+Feature-specific JavaScript and CSS live together. Shared styling stays in
+`src/styles/`; shared presentation helpers stay in `src/shared/`.
+
+The app uses classic deferred scripts with shared browser bindings, without a
+bundler or an ES module build. Keep the order in `index.html`: datasets and pure
+engines, shared helpers and avatar code, state and overview, connection and
+`main.js`, then command, crew, impact and navigation. The dashboard integration
+tests read that same script list directly from the HTML. When adding a feature,
+place its files under `src/features/` and register its assets in `index.html`.
+
 ## Validation
 
 With Node.js available:
 
 ```powershell
-node --test tests/health-data.test.cjs tests/command.test.cjs tests/crew-aggregate.test.cjs tests/avatar-behavior.test.cjs tests/avatar-needs.test.cjs tests/avatar-gaze.test.cjs tests/mission-impact.test.cjs
+node --test tests/*.test.cjs
 ```
 
 Tests cover mappings, missing data, timestamps, privacy projections, role selection, read-only enforcement, rejected astronaut accounts, HTML escaping, and the simulator. Also verified against a fresh local upstream API with an isolated SQLite database: medical-account access to app and synthetic data, physical record reads, and rejected astronaut accounts. Browser visual review remains pending because the browser host was unavailable.

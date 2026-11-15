@@ -63,6 +63,7 @@ function updateMissionUI() {
   document.querySelector('.demo-badge').textContent = label;
   document.querySelector('.system-status').textContent = dataState.source === 'demo' ? 'Simulated telemetry' : 'API connected · source labeled';
   document.querySelector('footer > span:nth-child(2)').textContent = dataState.source === 'demo' ? 'Demo seed · fictional data · no clinical interpretation' : 'Authenticated API · provenance shown · not a medical device';
+  if (dataState.dataNotice) document.querySelector('footer > span:nth-child(2)').textContent = `${dataState.dataNotice} · authenticated API · no clinical interpretation`;
   document.getElementById('connection-status').textContent = `${label}${client ? ' · '+client.user.role : ''}`;
 }
 function render() {

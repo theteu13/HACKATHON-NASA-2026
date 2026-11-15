@@ -1,5 +1,18 @@
 # CosmoMedic backend contract
 
+## Included Python backend
+
+`backend/` implements the endpoints consumed by the dashboard using FastAPI and
+the attributed bundled fictional datasets. It also serves the frontend at `/`.
+See [setup, authentication and limitations](backend/README.md). Physical fields
+are whitelisted in server responses; the upstream privacy limitation described
+below does not apply to this local implementation. The local version has one
+configured care-team account, expiring process-local sessions and read-only
+datasets, without a persistent database. Synthetic source statuses are unavailable
+because the bundle contains observations without alert classifications.
+
+The remainder of this document describes the separate upstream service contract.
+
 Inspected repository: [lzphellipe/nasa-space-software-health-crew](https://github.com/lzphellipe/nasa-space-software-health-crew/tree/7c7de46f2b2f21360f4a9fd027ad4c298522b618), commit `7c7de46f2b2f21360f4a9fd027ad4c298522b618`.
 
 ## Keep the datasets separate
