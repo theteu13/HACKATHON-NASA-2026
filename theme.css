@@ -1,0 +1,21 @@
+/* Identidade Nebula Glass compartilhável com o app. */
+:root {
+  --bg: #0B0B24;
+  --surface: #1E1B4E;
+  --text: #F1EFFE;
+  --muted: #ABA8D8;
+  --lilac: #887CFF;
+  --teal: #3DE0C8;
+  --gold: #FFC94D;
+  --danger: #FF7A93;
+  --holo-ok: #39FF9F;
+  --holo-attention: #FFC94D;
+  --holo-alert: #FF6B8B;
+  --track: #2A2766;
+  --line: rgba(171, 168, 216, .13);
+  --radius-card: 18px;
+  --radius-control: 14px;
+  --radius-chip: 99px;
+  --font-heading: Sora, Arial, sans-serif;
+  --font-body: Inter, Arial, sans-serif;
+}
