@@ -23,7 +23,7 @@ test('page endpoints use the actual first/last rendered content rather than menu
   assert.equal(chooseActiveRegion([{owner:'#records',top:500,bottom:700},{owner:'#crew',top:-200,bottom:480},{owner:'#cabin-tools',top:-600,bottom:-500}],800,{atBottom:true}),'#records');
 });
 test('controller handles layout changes, interrupted smooth navigation and cabin modal ownership',()=>{
-  const events={},frames=new Map(),bounds=new Map();let clock=0,nextFrame=1;
+  const events={},frames=new Map(),bounds=new Map();let clock=0,nextFrame=1,cabinOpens=0;
   const root={scrollTop:2100,scrollHeight:4000,clientHeight:800};
   const node=(selector,top,bottom)=>{
     const element={selector,tagName:'SECTION',open:false,visible:true,
@@ -54,7 +54,7 @@ test('controller handles layout changes, interrupted smooth navigation and cabin
     querySelectorAll:()=>links,querySelector:selector=>selectors.get(selector)||null,
     getElementById:id=>id==='crew-health'?details:id==='operations-dialog'?operations:id==='open-cabin'?node('open-cabin',0,0):null,
     addEventListener:(type,fn)=>events['document:'+type]=fn};
-  const context=vm.createContext({window:win,document:doc,setMonitoringScope(){details.open=true},openCabin(){operations.open=true}});
+  const context=vm.createContext({window:win,document:doc,setMonitoringScope(){details.open=true},openCabin(){cabinOpens++;operations.open=true}});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src/features/navigation/navigation.js'),'utf8'),context);
   function tick(){const entry=frames.entries().next().value;if(entry){frames.delete(entry[0]);entry[1](clock+=16);}}
   function active(){assert.equal(links.filter(l=>l.active).length,1);return links.find(l=>l.active).owner;}
@@ -66,7 +66,16 @@ test('controller handles layout changes, interrupted smooth navigation and cabin
   bounds.set('#mission-impact',[2000,2070]);bounds.set('.dashboard-grid',[2090,2900]);
   events['document:toggle']();tick();assert.equal(active(),'#crew');
   links[3].listeners.click({button:0,preventDefault(){}});tick();assert.equal(active(),'#cabin-tools');
+  assert.equal(cabinOpens,0,'Sidebar navigation must not open the cabin dialog');
+  assert.equal(operations.open,false);
+  win.location.hash='#cabin-tools';events['window:hashchange']();
+  assert.equal(cabinOpens,0,'Hash navigation must not open the cabin dialog');
+  // The existing panel button opens the dialog; navigation only tracks its ownership.
+  operations.open=true;events['open-cabin:click']();
   events['window:scroll']();tick();assert.equal(active(),'#cabin-tools');
   operations.open=false;events['#operations-dialog:close']();tick();assert.equal(active(),'#crew');
   assert.equal(links[1].attrs['aria-current'],'location');
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src/features/navigation/navigation.js'),'utf8'),context);
+  assert.equal(cabinOpens,0,'Reloading with a cabin hash must not open the dialog');
+  assert.equal(operations.open,false);
 });

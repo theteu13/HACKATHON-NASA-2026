@@ -1,14 +1,14 @@
 'use strict';
-const connectionActions = document.createElement('details');
-connectionActions.className = 'connection-actions';
-connectionActions.innerHTML = '<summary>Data source</summary><div class="connection-menu"><span id="connection-status" role="status"></span><button class="text-button" id="connect-api">Connect API</button><button class="text-button" id="refresh-data" hidden>Refresh</button><button class="text-button" id="return-demo" hidden>Disconnect</button></div>';
-document.querySelector('.topbar-right').append(connectionActions);
+// Existing main-panel controls can call these handlers; no header menu is created.
+function updateConnectionControl(id, property, value) {
+  const element = document.getElementById(id);
+  if (element) element[property] = value;
+}
 const connectionDialog = document.createElement('dialog');
 connectionDialog.id = 'connection-dialog';
 document.body.append(connectionDialog);
 
 function openConnection() {
-  connectionActions.open = false;
   const config = window.COSMOMEDIC_CONFIG;
   connectionDialog.innerHTML = `<form id="connection-form"><div class="panel-heading"><div><p class="eyebrow">COSMOMEDIC DATA</p><h2>Connect data source</h2></div><button type="button" class="icon-button" id="close-connection" aria-label="Close">&times;</button></div><p class="form-description">Load the mission data available to this dashboard.</p><label class="task-label">API origin<input name="origin" type="url" value="${escapeHTML(config.apiOrigin)}" placeholder="https://your-api.example" required></label><label class="task-label">Dataset<select name="dataset"><option value="app">CosmoMedic app &middot; Orbit-3</option><option value="synthetic">Synthetic mission &middot; all six vital signs</option></select></label><p class="command-note">Read-only monitoring.</p><p id="connection-error" role="alert"></p><button class="button primary" id="submit-connection">Load data</button></form>`;
   document.querySelector('#connection-form select').value = config.dataset;
@@ -33,8 +33,8 @@ async function connectToSource(origin, dataset) {
     client = nextClient;
     config.apiOrigin = origin;
     config.dataset = dataset;
-    document.getElementById('refresh-data').hidden = false;
-    document.getElementById('return-demo').hidden = false;
+    updateConnectionControl('refresh-data', 'hidden', false);
+    updateConnectionControl('return-demo', 'hidden', false);
     render();
     toast('Connected. Showing data from the selected API dataset.');
   } finally {
@@ -63,10 +63,9 @@ async function connectAPI(event) {
 
 async function refreshData() {
   if (!client || busy) return;
-  connectionActions.open = false;
   busy = true;
   const version = sessionVersion;
-  document.getElementById('refresh-data').disabled = true;
+  updateConnectionControl('refresh-data', 'disabled', true);
   try {
     const snapshot = await (dataState.source === 'api-app' ? client.loadApp() : client.loadSynthetic(dataState.mission.id));
     if (version === sessionVersion) {
@@ -80,21 +79,20 @@ async function refreshData() {
     updateMissionUI();
     if (typeof renderMonitoringView === 'function') renderMonitoringView();
     if (typeof renderTeamView === 'function') renderTeamView();
-    document.getElementById('connection-status').textContent = 'Refresh failed - displayed data may be stale';
+    updateConnectionControl('connection-status', 'textContent', 'Refresh failed - displayed data may be stale');
   } finally {
     busy = false;
-    document.getElementById('refresh-data').disabled = false;
+    updateConnectionControl('refresh-data', 'disabled', false);
   }
 }
 
 function disconnect() {
-  connectionActions.open = false;
   sessionVersion++;
   client = null;
   document.getElementById('operations-dialog')?.close();
   commitSnapshot(demoSnapshot());
-  document.getElementById('refresh-data').hidden = true;
-  document.getElementById('return-demo').hidden = true;
+  updateConnectionControl('refresh-data', 'hidden', true);
+  updateConnectionControl('return-demo', 'hidden', true);
   render();
   toast('Disconnected. Returned explicitly to the demo dataset.');
 }

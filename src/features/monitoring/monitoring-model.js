@@ -94,7 +94,19 @@
       return url.href;
     } catch { return null; }
   }
-  const api = {definitions,dailyKeys,hasReading,age,coverage,status,sortPeople,baseline,series,safeLink};
+  function teamSeries(people,key,untilDay,period=7) {
+    const first=period === 0 ? 1 : Math.max(1,untilDay-period+1);
+    const days=new Map();
+    for (const person of people) for (const point of series(person,key,untilDay)) {
+      if (point.missionDay < first || person.metrics?.[key]?.unsupported || person.metrics?.[key]?.private) continue;
+      if (!days.has(point.missionDay)) days.set(point.missionDay,[]);
+      days.get(point.missionDay).push(point.value);
+    }
+    return [...days].sort(([a],[b])=>a-b).map(([missionDay,values])=>({missionDay,
+      value:values.reduce((sum,value)=>sum+value,0)/values.length,
+      min:Math.min(...values),max:Math.max(...values),count:values.length,total:people.length}));
+  }
+  const api = {definitions,dailyKeys,hasReading,age,coverage,status,sortPeople,baseline,series,safeLink,teamSeries};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.Monitoring = api;
 })(typeof window !== 'undefined' ? window : globalThis);

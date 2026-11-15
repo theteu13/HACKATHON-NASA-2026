@@ -112,9 +112,10 @@ come first, followed by follow-up flags and data/status gaps. Search by name or 
 and switch between daily and longitudinal indicators. Measurement ages and
 timestamps stay visible independently of API refresh time.
 
-The collective illustration and averages are secondary expandable content. Means
-retain current-day contributor counts and exclude missing, older, future,
-unsupported and private values. No psychological mean is computed.
+The home view begins with a selectable crew trend (daily means, individual range
+and coverage) and source status distribution. The collective avatar is visible
+below this summary; the individual avatar starts expanded. Means exclude missing,
+future, unsupported and private values. No psychological mean is computed.
 
 Queue, table, individual context and avatar share the same status model. Open
 individual details for selectable physical trends, personal references and chart

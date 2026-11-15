@@ -160,3 +160,19 @@ test('failed refresh retains readings and exposes stale snapshot state in both v
   assert.ok(run('individualContext.innerHTML').includes('Refresh failed'));
   assert.ok(get('.system-status').textContent.includes('refresh failed'));
 });
+
+test('home opens with a crew chart and visible avatar before the review controls',()=>{
+  const {get,run}=setup();
+  const html=run('teamPanel.innerHTML');
+  assert.ok(html.indexOf('id="crew-summary"') < html.indexOf('id="team-body-visual"'));
+  assert.ok(html.indexOf('id="team-body-visual"') < html.indexOf('class="crew-controls panel"'));
+  assert.ok(!html.includes('class="secondary-illustration team-illustration"'));
+  assert.equal(run('individualIllustration.open'),true);
+  assert.ok(get('crew-summary').innerHTML.includes('Mission at a glance'));
+  assert.ok(get('crew-summary').innerHTML.includes('Source status distribution'));
+  assert.ok(get('crew-summary').innerHTML.includes('Contributing crew'));
+  run("crewSummaryState.metric='sleep';crewSummaryState.period=30;renderCrewSummary()");
+  assert.ok(get('crew-summary').innerHTML.includes('Sleep duration'));
+  run("crewFilter.search='not a crew member';renderTeamResults()");
+  assert.ok(get('crew-summary').innerHTML.includes('all crew, independent of filters'));
+});

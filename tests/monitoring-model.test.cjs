@@ -93,3 +93,15 @@ test('app histories include physical indicators and daily recorded intake withou
   assert.equal(p.historyByMetric.nutrition[0].value,700);
   assert.equal(p.historyByMetric.mood,undefined);
 });
+
+test('crew chart averages only same-day available readings with explicit individual range and coverage',()=>{
+  const a=person(),b=person(),c=person();
+  a.historyByMetric={heart:[{missionDay:10,value:60},{missionDay:12,value:70}]};
+  b.historyByMetric={heart:[{missionDay:10,value:80},{missionDay:12,value:null},{missionDay:13,value:999}]};
+  c.metrics.heart.unsupported=true;c.historyByMetric={heart:[{missionDay:10,value:999}]};
+  assert.deepEqual(M.teamSeries([a,b,c],'heart',12,7),[
+    {missionDay:10,value:70,min:60,max:80,count:2,total:3},
+    {missionDay:12,value:70,min:70,max:70,count:1,total:3}
+  ]);
+  assert.equal(M.teamSeries([a,b,c],'heart',12,1).length,1);
+});

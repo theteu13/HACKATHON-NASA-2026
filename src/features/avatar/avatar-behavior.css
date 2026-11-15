@@ -1,10 +1,10 @@
 .avatar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 0}
-.avatar-state{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:10px;line-height:1.6}
+.avatar-state{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:13px;line-height:1.6}
 .avatar-state:before{content:'';height:6px;width:6px;flex-shrink:0;border-radius:50%;background:currentColor}
 .avatar-state[data-state=routine]{color:var(--teal)}
 .avatar-state[data-state=watch]{color:var(--gold)}
 .avatar-state[data-state=review]{color:var(--danger)}
-.avatar-motion-toggle{min-height:44px;padding:8px 12px;border:1px solid #887cff60;border-radius:12px;color:var(--muted);background:#887cff0a;font-size:10px;white-space:nowrap}
+.avatar-motion-toggle{min-height:44px;padding:8px 12px;border:1px solid #887cff60;border-radius:12px;color:var(--muted);background:#887cff0a;font-size:13px;white-space:nowrap}
 .avatar-motion-toggle:hover{border-color:var(--teal);color:var(--text)}
 .avatar-motion-toggle[aria-pressed=true]{border-color:#3de0c850;color:var(--teal)}
 .body-visual[data-avatar-state]{--avatar-accent:var(--lilac)}
@@ -38,7 +38,7 @@
 @media(prefers-reduced-motion:reduce){
   .body-visual[data-avatar-state] :is(.avatar-figure,.avatar-head,.avatar-arm-left,.avatar-console,.avatar-ground-shadow,.avatar-ground-ring){animation:none}
 }
-@media(max-width:520px){.avatar-state{font-size:9px}.avatar-motion-toggle{font-size:9px;padding:8px 10px}.avatar-toolbar{gap:8px}}
+@media(max-width:520px){.avatar-state{font-size:13px}.avatar-motion-toggle{font-size:13px;padding:8px 10px}.avatar-toolbar{gap:8px}}
 
 /* Independent, offset rhythms create relaxed buoyancy while parent groups retain source poses. */
 .body-visual[data-avatar-state]{--limb-sway:3deg;--leg-sway:1.7deg}

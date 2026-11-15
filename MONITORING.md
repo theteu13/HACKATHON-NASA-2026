@@ -15,9 +15,15 @@ diagnose conditions, assign medical urgency or authorize activities.
    available, descriptive difference and exact observations in the values table.
 6. Follow the external case link when the main system supplies review tracking.
 
-The collective illustration and averages, individual illustration, source scores
-and rest scenario demonstration are secondary expandable sections. Avatar motion
-is paused by default. Illustrations do not localize a medical condition.
+The home view starts with the crew trend and source status distribution. Choose
+an indicator and period; daily means include same-day available values, with
+individual min–max and contributor counts. Missing days are not connected and
+filters below do not change the whole-crew summary.
+
+The collective avatar is visible below the summary, and the individual avatar
+starts expanded. Source scores and rest demonstrations remain secondary. Motion
+is paused by default. Illustrations do not localize a medical condition. Small
+interface text uses a minimum of 13px, including notes, timestamps and labels.
 
 ## One status model
 

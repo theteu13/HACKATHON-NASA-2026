@@ -84,7 +84,7 @@
     if(changeHash)global.history.replaceState(null,'',owner);
     pending={owner,started:global.performance.now(),lastTop:scrollRoot().scrollTop,moved:false,stable:0};
     target.scrollIntoView({behavior:reduced.matches?'instant':'smooth',block:'start'});
-    if(owner==='#cabin-tools'){modalOwner=owner;openCabin();}
+    // Sidebar/hash navigation only scrolls. The panel's own button opens its dialog.
     schedule();
   }
   links.forEach(link=>link.addEventListener('click',event=>{
