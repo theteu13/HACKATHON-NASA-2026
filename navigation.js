@@ -6,6 +6,9 @@
   const operations = document.getElementById('operations-dialog');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const targets = links.map(link => ({ link, target: document.querySelector(link.getAttribute('href')) }));
+  const crewLink = links.find(link => link.getAttribute('href') === '#crew');
+  const teamSection = document.getElementById('team-overview');
+  if (crewLink && teamSection) targets.push({ link: crewLink, target: teamSection });
   const indicator = document.querySelector('.nav-indicator');
   let frame = null;
 

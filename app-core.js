@@ -15,6 +15,7 @@ function demoSnapshot() {
 }
 function commitSnapshot(snapshot) {
   const previousId = selected?.id;
+  snapshot.loadedAt = new Date().toISOString();
   dataState = snapshot; crew = snapshot.crew; selected = crew.find(c => c.id === previousId) || crew[0];
   if (!selected) throw new Error('No crew is available in this dataset.');
 }
@@ -74,7 +75,7 @@ function updateMissionUI() {
   const stats = document.querySelectorAll('.summary-detail strong');
   stats[0].textContent = `${String(m.today).padStart(3,'0')} / ${m.lengthDays}`;
   stats[1].textContent = `${crew.length} ${crew.length === 1 ? 'astronaut' : 'astronauts'}`;
-  stats[2].textContent = dataState.source === 'demo' ? 'Seed snapshot' : new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  stats[2].textContent = dataState.source === 'demo' ? 'Seed snapshot' : new Date(dataState.loadedAt).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   const pct = Math.min(100,Math.round(m.today/m.lengthDays*100));
   document.querySelector('.mission-day').textContent = `DAY ${m.today} / ${m.lengthDays}`;
   document.querySelector('.progress i').style.width = `${pct}%`;

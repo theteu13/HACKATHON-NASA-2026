@@ -41,9 +41,15 @@ There is no astronaut mode, personal copilot, family-message panel, or health-da
 With Node.js available:
 
 ```powershell
-node --test tests/health-data.test.cjs tests/command.test.cjs
+node --test tests/health-data.test.cjs tests/command.test.cjs tests/crew-aggregate.test.cjs
 ```
 
 Tests cover mappings, missing data, timestamps, privacy projections, role selection, read-only enforcement, rejected astronaut accounts, HTML escaping, and the simulator. Also verified against a fresh local upstream API with an isolated SQLite database: medical-account access to app and synthetic data, physical record reads, and rejected astronaut accounts. Browser visual review remains pending because the browser host was unavailable.
 
 See [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md) for the exact mappings, endpoints, account namespaces, and integration limits.
+
+## Collective monitoring
+
+Team overview opens with status counts and a conceptual crew avatar. Its eight callouts show means for the current mission day, with contributing crew counts (for example, 3/4). Pressure means use the same complete systolic/diastolic pairs. Missing, older, future, unsupported, and private values do not enter the mean. No psychological mean is computed.
+
+Callout colors preserve individual metric flags, including older measurements, and the follow-up list keeps those crew members visible. If a metric has no per-metric source status, the interface does not invent clinical thresholds. The comparison table is expandable and displays latest individual readings with their measurement days. Select View details to open the individual avatar.

@@ -72,3 +72,9 @@ Cabin readings are read-only. Light/noise/temperature controls and rest planning
 Validated with a local upstream FastAPI instance and an isolated SQLite database: medical-account login, app/synthetic crew reads, received physical logs, private-mood exclusion, and rejection of astronaut accounts. No upstream code, hosted database, or GitHub branch was changed.
 
 Unit and DOM-simulation tests are in `tests/health-data.test.cjs` and `tests/command.test.cjs`. Real browser visual verification remains pending because the browser access host was unavailable.
+
+## Collective averages
+
+`crew-aggregate.js` computes descriptive means only within the selected dataset and the current mission day. Each metric includes contributor count, total crew, range, and source flags. Pressure uses only crew with a complete same-day systolic/diastolic pair; both means share the same contributors. Missing values are not zero. Mood is always private and is never aggregated.
+
+The collective avatar is conceptual and represents no individual. Colors reflect the worst available individual metric flag, even if its reading is older and excluded from the mean; flag dates remain visible in individual details. Current summary and metric flags also feed the follow-up list and the summary counts. These are source flags, not new clinical classifications. Tests for these rules are in `tests/crew-aggregate.test.cjs`.
