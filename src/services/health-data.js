@@ -13,10 +13,13 @@
   const sortedLogs = logs => [...logs].sort((a, b) => a.missionDay - b.missionDay || a.timestamp.localeCompare(b.timestamp));
   function appPerson(profile, logs = [], summary = {}, day = Infinity) {
     const own = sortedLogs(logs.filter(l => l.astronautId === profile.id && l.missionDay <= day));
-    const metrics = blankMetrics();
-    const put = (key, value, log) => metrics[key] = metric(value, metrics[key].unit, {
-      timestamp: log.timestamp, missionDay: log.missionDay, provenance: log.provenance || 'SIMULATED_TELEMETRY'
-    });
+    const metrics = blankMetrics(), historyByMetric = {};
+    const put = (key, value, log) => {
+      metrics[key] = metric(value, metrics[key].unit, {
+        timestamp: log.timestamp, missionDay: log.missionDay, provenance: log.provenance || 'SIMULATED_TELEMETRY'
+      });
+      (historyByMetric[key] ||= []).push({missionDay:log.missionDay,date:log.timestamp,value:number(value)});
+    };
     for (const log of own) {
       const d = log.data;
       if (log.type === 'measurement' && d.metric === 'blood_pressure') {
@@ -27,14 +30,23 @@
       if (log.type === 'sleep') put('sleep', number(d.durationMin) === null ? null : d.durationMin / 60, log);
       if (log.type === 'mood') put('mood', d.level, log);
     }
-    const meals = own.filter(l => l.type === 'meal' && l.missionDay === day);
-    if (meals.length) put('nutrition', meals.reduce((sum, l) => sum + (number(l.data.kcal) || 0), 0), meals.at(-1));
+    const mealDays = new Map();
+    own.filter(l => l.type === 'meal' && number(l.data.kcal) !== null).forEach(log => {
+      const previous = mealDays.get(log.missionDay);
+      mealDays.set(log.missionDay,{value:(previous?.value || 0)+log.data.kcal,log});
+    });
+    mealDays.forEach(({value,log}) => {
+      (historyByMetric.nutrition ||= []).push({missionDay:log.missionDay,date:log.timestamp,value});
+      if (log.missionDay === day) metrics.nutrition = metric(value,'kcal',{
+        timestamp:log.timestamp,missionDay:day,provenance:log.provenance || 'SIMULATED_TELEMETRY'
+      });
+    });
     const byDay = new Map();
     own.filter(l => l.type === 'measurement' && l.data.metric === 'blood_pressure').forEach(l => {
       if (number(l.data.values.pulse) !== null) byDay.set(l.missionDay, { missionDay: l.missionDay, date: l.timestamp, value: l.data.values.pulse });
     });
     return { id: profile.id, name: profile.name, crewId: profile.crewId, role: profile.role || 'astronaut',
-      baseline: profile.baseline || {}, metrics, history: [...byDay.values()], logs: own, summary,
+      baseline: profile.baseline || {}, metrics, history: [...byDay.values()], historyByMetric, logs: own, summary,
       provenance: own.some(l => l.provenance === 'USER_REPORTED') ? 'USER_REPORTED' : 'SIMULATED_TELEMETRY' };
   }
   // Ground UI retains only operational status, never mood, diary, or alert evidence/text.
@@ -50,16 +62,17 @@
     temperature: 'body_temperature', sleep: 'sleep_hours', mood: 'mood', bone: 'bone_density', nutrition: 'calorie_intake', immune: 'white_blood_cells' };
   function syntheticPerson(astronaut, daily, today) {
     const rows = [...daily].sort((a, b) => a.missionDay - b.missionDay);
-    const metrics = blankMetrics();
+    const metrics = blankMetrics(), historyByMetric = {};
     for (const [key, code] of Object.entries(syntheticMap)) {
       const comparison = today.values?.[code];
       const last = [...rows].reverse().find(r => number(r.values?.[code]) !== null);
       const value = comparison ? comparison.value : last?.values[code];
       metrics[key] = metric(value, metrics[key].unit, { status: comparison?.status || last?.metricStatus?.[code] || 'no_data',
         missionDay: comparison?.lastMeasuredDay ?? last?.missionDay, timestamp: last?.date, provenance: 'SIMULATED_TELEMETRY' });
+      if (key !== 'mood') historyByMetric[key] = rows.map(r => ({missionDay:r.missionDay,date:r.date,value:number(r.values?.[code])}));
     }
     return { id: astronaut.id, name: astronaut.displayName, role: astronaut.role, metrics, logs: [],
-      history: rows.map(r => ({ missionDay: r.missionDay, date: r.date, value: number(r.values?.heart_rate) })),
+      history: rows.map(r => ({ missionDay: r.missionDay, date: r.date, value: number(r.values?.heart_rate) })), historyByMetric,
       summary: { status: today.status }, provenance: 'SIMULATED_TELEMETRY' };
   }
   function syntheticGroundPerson(row) {
@@ -72,22 +85,24 @@
   }
   const moodLabels = { 1: 'Stressed', 2: 'Tired', 3: 'Okay', 4: 'Good', 5: 'Great' };
   class Client {
-    constructor(baseUrl, fetcher = global.fetch?.bind(global)) {
+    constructor(baseUrl, fetcher = global.fetch?.bind(global), { getAccessToken = null, credentials = 'omit' } = {}) {
       const u = new URL(baseUrl);
       const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
       if ((u.protocol !== 'https:' && !(u.protocol === 'http:' && local)) || u.username || u.password || u.search || u.hash || u.pathname !== '/') throw new Error('Use an HTTPS API origin, or HTTP on localhost, without a path or credentials.');
-      this.baseUrl = u.origin; this.fetcher = fetcher; this.token = null; this.user = null;
+      if (getAccessToken !== null && typeof getAccessToken !== 'function') throw new Error('getAccessToken must be a function supplied by the host application.');
+      if (!['omit', 'same-origin', 'include'].includes(credentials)) throw new Error('Invalid request credentials mode.');
+      this.baseUrl = u.origin; this.fetcher = fetcher; this.getAccessToken = getAccessToken; this.credentials = credentials;
     }
-    async request(path, { method = 'GET', body } = {}) {
-      if (method !== 'GET' && !(method === 'POST' && path === '/api/v1/auth/login')) throw new Error('This dashboard is read-only.');
+    async request(path, { method = 'GET' } = {}) {
+      if (method !== 'GET') throw new Error('This dashboard is read-only.');
+      const token = this.getAccessToken ? await this.getAccessToken({ origin: this.baseUrl }) : null;
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
       try {
-        const response = await this.fetcher(this.baseUrl + path, { method, signal: controller.signal, cache: 'no-store', credentials: 'omit',
-          headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}), ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}) },
-          ...(body ? { body: JSON.stringify(body) } : {}) });
+        const response = await this.fetcher(this.baseUrl + path, { method, signal: controller.signal, cache: 'no-store', credentials: this.credentials,
+          headers: { Accept: 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) } });
         const result = response.status === 204 ? null : await response.json();
         if (!response.ok) {
-          if (response.status === 401) { this.token = null; throw new Error('Session expired or credentials invalid. Sign in again.'); }
+          if (response.status === 401) throw new Error('API access was not authorized. Restore access through the main system.');
           if (response.status === 403) throw new Error('This account does not have access to the selected dataset.');
           const detail = typeof result?.detail === 'string' ? result.detail : Array.isArray(result?.detail) ? result.detail.map(e => e.msg).join('; ') : 'API request failed';
           throw new Error(`HTTP ${response.status}: ${detail}`);
@@ -99,34 +114,20 @@
         throw error;
       } finally { clearTimeout(timer); }
     }
-    async login(username, password) {
-      const response = await this.request('/api/v1/auth/login', { method: 'POST', body: { username, password } });
-      this.token = response.accessToken;
-      if (!this.token) throw new Error('The API did not return accessToken.');
-      this.user = await this.request('/api/v1/auth/me');
-      if (!['medical', 'admin'].includes(this.user.role)) { this.token = null; this.user = null; throw new Error('This dashboard is for the care team only. Sign in with a medical or admin account.'); }
-      // Refresh tokens and passwords are never persisted by the dashboard.
-      return this.user;
-    }
-    requireCareTeam() {
-      if (!this.user || !['medical','admin'].includes(this.user.role)) throw new Error('Care-team access is required.');
-    }
     async loadApp() {
-      this.requireCareTeam();
       const [team, env] = await Promise.all([this.request('/api/v1/app/ground/crew'), this.request('/api/v1/app/ground/environment')]);
       const crew = await Promise.all(team.crew.map(async row => {
         const safe = appGroundPerson(row);
         const path = '/api/v1/app/ground/astronauts/' + encodeURIComponent(safe.id) + '/logs?type=';
         const groups = await Promise.all(['measurement','sleep','meal'].map(type => this.request(path + type)));
         const allowed = groups.flat().filter(l => ['measurement','sleep','meal'].includes(l.type));
-        const person = appPerson({id:safe.id,name:safe.name,crewId:safe.crewId},allowed,safe.summary,team.missionDay);
+        const person = appPerson({id:safe.id,name:safe.name,crewId:safe.crewId,baseline:row.astronaut.baseline},allowed,safe.summary,team.missionDay);
         person.metrics.mood = {value:null,unit:'/5',private:true};
         return person;
       }));
       return { mission: team.mission, crew, summaries: [], environments: env.latest, source: 'api-app', dataNotice: team.dataNotice || null };
     }
     async loadSynthetic(missionId) {
-      this.requireCareTeam();
       const missions = await this.request('/api/v1/missions');
       const mission = missionId ? missions.find(m => m.id === missionId) : missions[0];
       if (!mission) throw new Error('No matching synthetic mission is available.');
@@ -144,7 +145,7 @@
         analysisPeople.push({id:row.astronaut.id,name:row.astronaut.displayName,records:physical,
           baselineReference:{fromDay:baselineReference.fromDay,toDay:baselineReference.toDay,
             metrics:(baselineReference.metrics||[]).filter(m=>impactEngine.indicators.some(i=>i.code===m.metric))}});
-        const person = syntheticPerson(row.astronaut,allDays.filter(r=>r.missionDay>=1),{status:row.status});
+        const person = syntheticPerson(row.astronaut,allDays.filter(r=>r.missionDay>=1&&r.missionDay<=data.missionDay),{status:row.status});
         person.summary.activeAlerts = row.activeEpisodes || 0;
         person.metrics.mood = {value:null,unit:'/5',private:true};
         return person;

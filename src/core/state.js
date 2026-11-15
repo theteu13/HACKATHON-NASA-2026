@@ -13,9 +13,11 @@ function demoSnapshot() {
 }
 function commitSnapshot(snapshot) {
   const previousId = selected?.id;
+  const nextSelected = snapshot.crew.find(c => c.id === previousId) || snapshot.crew[0];
+  if (!nextSelected) throw new Error('No crew is available in this dataset.');
   snapshot.loadedAt = new Date().toISOString();
-  dataState = snapshot; crew = snapshot.crew; selected = crew.find(c => c.id === previousId) || crew[0];
-  if (!selected) throw new Error('No crew is available in this dataset.');
+  snapshot.connectionState = snapshot.source === 'demo' ? 'demo' : 'loaded';
+  dataState = snapshot; crew = snapshot.crew; selected = nextSelected;
 }
 commitSnapshot(demoSnapshot());
 function current() { return selected; }

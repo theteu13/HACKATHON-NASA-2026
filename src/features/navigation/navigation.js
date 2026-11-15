@@ -33,9 +33,10 @@
   const main=document.querySelector('main');
   const ownership=[
     ['#overview','.topbar'],['#overview','.page-heading'],['#overview','.mode-area'],
-    ['#overview','.connection-bar'],['#overview','.mission-summary'],
+    ['#overview','.mission-summary'],
     ['#crew','#crew'],['#crew','#team-overview'],['#crew','.command-primary'],
-    ['#crew','#crew-health > summary'],['#crew','.astronaut-heading'],
+    ['#crew','#crew-health > summary'],['#crew','#individual-context'],['#crew','.astronaut-heading'],
+    ['#crew','.secondary-illustration'],
     ['#crew','.dashboard-grid'],['#crew','.bottom-grid'],
     ['#mission-impact','#mission-impact'],['#cabin-tools','#cabin-tools'],['#records','#records']
   ];

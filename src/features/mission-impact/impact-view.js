@@ -5,7 +5,7 @@ let impactRenderedDataset=null;
 const impactSection=document.createElement('details');
 impactSection.id='mission-impact';impactSection.className='mission-impact';
 impactSection.innerHTML='<summary>Mission impact <span>30-day baseline · 180-day follow-up</span></summary><div class="impact-shell" id="impact-shell"></div>';
-teamPanel.after(impactSection);
+workspace.after(impactSection);
 const impactNumber=(value,decimals=2)=>typeof value==='number'&&Number.isFinite(value)?new Intl.NumberFormat('en-US',{maximumFractionDigits:decimals}).format(value):'—';
 const impactSigned=(value,decimals=2)=>value===null?'—':(value>0?'+':'')+impactNumber(value,decimals);
 function impactDataset(){return impactState.source==='example'?window.COSMOMEDIC_IMPACT_EXAMPLE:dataState.impact;}

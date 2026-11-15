@@ -1,11 +1,11 @@
-# Backend Python · CosmoMedic
+# CosmoMedic Python backend
 
-API FastAPI compatível com o dashboard existente. O mesmo servidor entrega o
-frontend em `/`, a API em `/api/v1` e a documentação interativa em `/docs`.
+Read-only FastAPI adapter for the existing dashboard. It serves the frontend at
+`/`, data at `/api/v1` and interactive API documentation at `/docs`.
 
-## Executar no Windows
+## Run on Windows
 
-Na raiz do projeto, com Python 3.10 ou mais recente:
+From the project root, with Python 3.10 or later:
 
 ```powershell
 python -m venv .venv
@@ -13,76 +13,99 @@ python -m venv .venv
 .\start-backend.ps1
 ```
 
-O script solicita uma senha local sem exibi-la. Abra http://127.0.0.1:8000,
-selecione **Connect API**, mantenha essa origem e entre com o usuário `surgeon`
-e a senha escolhida. Você pode selecionar **CosmoMedic app** ou **Synthetic
-mission**. A página inicia em demo até o login; **Refresh** lê novamente a API e
-**Disconnect** retorna ao demo. Reiniciar o servidor invalida as sessões.
+Open http://127.0.0.1:8000, select **Connect API**, choose **CosmoMedic app** or
+**Synthetic mission**, and click **Load data**. There is no local login, password
+or user registration. **Refresh** reloads the source; **Disconnect** returns to
+the browser demo without changing the main system's session.
 
-Para executar diretamente ou em outros sistemas, configure `COSMOMEDIC_PASSWORD`
-no ambiente e rode, a partir da raiz:
+On other systems, use the virtual environment's Python from the project root:
 
 ```text
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Use o Python do ambiente virtual. Não é necessário instalar Node para executar a
-aplicação. Os scripts de preview estático existentes continuam disponíveis.
+Node is not required to run the dashboard. Existing static preview commands
+continue to work.
 
-## Organização
+## Organization
 
-- `main.py`: aplicação, CORS, cache e arquivos públicos.
-- `config.py`: configuração pelo ambiente.
-- `auth.py`: login, verificação de senha e sessões Bearer.
-- `routes.py`: endpoints compatíveis com o frontend.
-- `repository.py`: leitura e projeção dos datasets.
-- `tests/`: testes HTTP, autenticação, privacidade e contrato.
+- `main.py`: API application, CORS, cache policy and public assets.
+- `config.py`: allowed frontend origins from the environment.
+- `routes.py`: read endpoints matching the JavaScript client.
+- `repository.py`: dataset access and physical-field projections.
+- `tests/`: HTTP, privacy, contract and asset isolation tests.
+- `../src/config.js`: external API origin, dataset and host session integration.
 
-## Configuração
+## Integracao com o sistema principal
 
-| Variável | Padrão | Uso |
-| --- | --- | --- |
-| `COSMOMEDIC_USERNAME` | `surgeon` | Conta local da equipe de saúde |
-| `COSMOMEDIC_PASSWORD` | vazio | Obrigatória para permitir login; máximo de 128 caracteres |
-| `COSMOMEDIC_ROLE` | `medical` | `medical` ou `admin` |
-| `COSMOMEDIC_SESSION_SECONDS` | `3600` | Expiração entre 60 e 86400 segundos |
-| `COSMOMEDIC_ALLOWED_ORIGINS` | `http://127.0.0.1:4173,http://localhost:4173` | Origens extras do frontend, separadas por vírgula |
+The upstream mappings remain in `src/services/health-data.js`, following
+[BACKEND_CONTRACT.md](../BACKEND_CONTRACT.md). Set `apiOrigin` and `dataset` in
+`src/config.js`. Set `autoConnect: true` to load that source when opening the
+page, without asking the user to select a source manually.
 
-O frontend servido na mesma origem não depende de CORS. Não coloque senhas no
-JavaScript nem versione arquivos `.env`.
+The host application can provide `window.COSMOMEDIC_CONFIG` before `src/config.js`
+is loaded, overriding the defaults. For example, a host that already owns a
+session can supply:
 
-## Dados e limites
+```javascript
+window.COSMOMEDIC_CONFIG = {
+  apiOrigin: 'https://api.example.com',
+  dataset: 'app',
+  autoConnect: true,
+  getAccessToken: async ({ origin }) => {
+    if (origin !== 'https://api.example.com') return null;
+    return existingSession.getAccessToken();
+  }
+};
+```
 
-Esta implementação é um backend local para o protótipo, com **dados fictícios**.
-Ela reutiliza `data/demo-seed.js` e `data/impact-example.js`: o repositório Python
-decodifica apenas o JSON das atribuições, sem executar JavaScript. A atribuição e
-a licença continuam em [data/NOTICE.md](../data/NOTICE.md).
+`existingSession` is an integration example: replace it with the session service
+of the main application. The callback is invoked for each GET request; the
+dashboard never creates, refreshes or stores a token. Scope the callback to the
+trusted API origin. Never put passwords or fixed access tokens in frontend code.
 
-Não há banco de dados, coleta de telemetria real ou gravação de registros nesta
-versão. O ponto para substituir a fonte por banco/API é `repository.py`.
+For an API that uses the main system's cookies, configure `credentials` as
+`same-origin` or `include` instead. Cross-origin cookie access also requires the
+external API's CORS and cookie settings to allow it. The default is `omit`.
 
-As rotas autenticadas expõem somente dados físicos permitidos. Notas, nomes dos
-pratos, qualidade subjetiva do sono, humor, mensagens privadas e evidências de
-alertas ficam fora das respostas. O histórico sintético preserva lacunas e não
-inclui dia zero. A referência de baseline usa os dias -30 a -1 e desvio padrão
-amostral. O dataset sintético não traz classificações de alerta; seu status fica
-indisponível, sem criar limites clínicos.
+Login, logout, user roles and access checks belong to the main system and external
+API. Their protected endpoints stay protected. A 401/403 is reported without a
+local login form and without silently replacing loaded data.
 
-Há uma conta configurada pelo ambiente. Tokens opacos expiram e ficam somente
-na memória de um processo; execute com **um worker**. Este protótipo não oferece
-cadastro de usuários, recuperação de senha ou revogação individual. Antes de
-expor dados reais em produção, a autenticação e o armazenamento precisam ser
-integrados ao serviço de identidade e à infraestrutura da organização.
+If the repository's endpoint paths or response schemas change, update the client
+adapter and its tests. The Python `repository.py` is the boundary for replacing
+bundled data with a database or another data source.
 
-## Testar
+## Data and limits
+
+This local server exposes **only the bundled fictional datasets**, without login
+or a database. It does not proxy or remove authorization from the upstream API.
+The default launcher binds to `127.0.0.1`.
+
+The repository decodes the JSON assignment in `data/demo-seed.js` and
+`data/impact-example.js` without evaluating JavaScript. Attribution and license
+remain in [data/NOTICE.md](../data/NOTICE.md).
+
+Only whitelisted physical fields are returned. Notes, meal names, subjective
+sleep quality, mood, private messages and alert evidence are excluded. Synthetic
+history preserves gaps and excludes day zero; baseline reference statistics use
+days -30 through -1 and sample standard deviation. The bundle has no alert
+classifications, so synthetic statuses remain unavailable.
+
+There are no health-data write methods, user accounts or session storage in this
+backend. To connect real mission data, use the external system's authorization
+and data service through the integration boundary above.
+
+The only backend environment option is `COSMOMEDIC_ALLOWED_ORIGINS`, a
+comma-separated list defaulting to
+`http://127.0.0.1:4173,http://localhost:4173`. The frontend served on the same origin
+does not need CORS.
+
+## Tests
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest backend/tests -q
 ```
 
-Os testes existentes do frontend continuam sendo executados com
-`node --test tests/*.test.cjs`.
-
-Referências de implementação: [segurança HTTP Bearer](https://fastapi.tiangolo.com/reference/security/)
-e [CORS](https://fastapi.tiangolo.com/tutorial/cors/) na documentação oficial do FastAPI.
+Run the frontend tests with `node --test tests/*.test.cjs`.

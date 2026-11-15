@@ -4,12 +4,12 @@
 
 `backend/` implements the endpoints consumed by the dashboard using FastAPI and
 the attributed bundled fictional datasets. It also serves the frontend at `/`.
-See [setup, authentication and limitations](backend/README.md). Physical fields
+See [setup and external session integration](backend/README.md). Physical fields
 are whitelisted in server responses; the upstream privacy limitation described
-below does not apply to this local implementation. The local version has one
-configured care-team account, expiring process-local sessions and read-only
-datasets, without a persistent database. Synthetic source statuses are unavailable
-because the bundle contains observations without alert classifications.
+below does not apply to this local implementation. The local API serves only
+bundled fictional data, without login, sessions, a user database or a persistent
+database. Synthetic source statuses are unavailable because the bundle contains
+observations without alert classifications.
 
 The remainder of this document describes the separate upstream service contract.
 
@@ -44,12 +44,10 @@ Canonical references: [app schemas](https://github.com/lzphellipe/nasa-space-sof
 
 ## API calls
 
-All authenticated requests use `Authorization: Bearer <accessToken>`. JSON fields are camelCase.
+Protected upstream requests use `Authorization: Bearer <accessToken>` supplied by the main system through `getAccessToken`. The dashboard never calls login or account endpoints. JSON fields are camelCase.
 
 | Action | Endpoint |
 | --- | --- |
-| Sign in using username/password (Crew ID/PIN also works) | `POST /api/v1/auth/login` |
-| Require medical/admin role | `GET /api/v1/auth/me` |
 | Ground crew overview | `GET /api/v1/app/ground/crew` |
 | Ground habitat readings | `GET /api/v1/app/ground/environment` |
 | List synthetic missions | `GET /api/v1/missions` |
@@ -60,7 +58,7 @@ The dashboard does not connect directly to SQLite/PostgreSQL. Database passwords
 
 ## Read-only monitoring
 
-The dashboard does not create or modify health records. There are no check-in forms, health-data submission methods, or browser-local record storage. Authentication is the only allowed POST request; data loading uses GET.
+The dashboard does not create or modify health records. There are no check-in forms, health-data submission methods, or browser-local record storage. All dashboard API requests use GET; POST and other write methods are blocked.
 
 For each crew member the app source reads measurement, sleep, and meal logs from `GET /api/v1/app/ground/astronauts/{astronautId}/logs?type=...`. Mood, journal, injury descriptions, and private messages are not requested as individual logs. The UI labels mood private and leaves its value empty. Synthetic records supply physical metrics and heart-rate history; mood is discarded in the projection.
 
@@ -68,11 +66,18 @@ The ground summary remains visible above an expandable read-only section for the
 
 ## Roles and privacy
 
-Live access requires medical or admin from `/auth/me`. Astronaut accounts are rejected before any crew data is loaded. There is no role switch or astronaut interface. Read endpoints remain protected by backend authorization.
+The main system owns login, sessions and account roles. The upstream service must
+enforce care-team authorization on read endpoints. The dashboard does not create
+accounts, validate credentials, refresh sessions or log the user out. Configure
+`getAccessToken` or cookie credentials in the host integration when accessing
+protected endpoints. A 401/403 is displayed as an access error without replacing
+loaded data with demo data.
 
 **Backend limitation:** `/app/ground/crew` currently returns mood and a latest alert containing text/evidence; the synthetic ground overview includes raw per-person values. The frontend discards these fields in its ground projection. This does not remove them from the network response. Meeting the intended privacy policy requires server-side response filtering and an explicit policy for operational versus clinical roles. See [ground router](https://github.com/lzphellipe/nasa-space-software-health-crew/blob/7c7de46f2b2f21360f4a9fd027ad4c298522b618/app/routers/app_ground.py).
 
-Tokens stay in memory; passwords and refresh tokens are not persisted. Reloading the page requires sign-in again. Disconnect clears local session state; it does not revoke an already-issued access token on the server.
+The dashboard does not persist passwords or tokens. `getAccessToken` is called
+for each request so the host can supply its current session. Disconnect only
+detaches the data source and returns to demo; it does not change the host session.
 
 ## Unsupported integrations
 
@@ -82,7 +87,7 @@ Cabin readings are read-only. Light/noise/temperature controls and rest planning
 
 ## Verification
 
-Validated with a local upstream FastAPI instance and an isolated SQLite database: medical-account login, app/synthetic crew reads, received physical logs, private-mood exclusion, and rejection of astronaut accounts. No upstream code, hosted database, or GitHub branch was changed.
+Earlier upstream integration was validated with a local FastAPI instance and an isolated SQLite database: medical-account login, app/synthetic crew reads, received physical logs, private-mood exclusion, and rejection of astronaut accounts. No upstream code, hosted database, or GitHub branch was changed.
 
 Unit and DOM-simulation tests are in `tests/health-data.test.cjs` and `tests/command.test.cjs`. Real browser visual verification remains pending because the browser access host was unavailable.
 

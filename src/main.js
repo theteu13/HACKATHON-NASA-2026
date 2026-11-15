@@ -4,7 +4,7 @@ document.getElementById('connect-api').addEventListener('click',openConnection);
 document.getElementById('refresh-data').addEventListener('click',refreshData);
 document.getElementById('return-demo').addEventListener('click',()=>{if(!busy)disconnect();});
 document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>{period=Number(b.dataset.period);document.querySelectorAll('[data-period]').forEach(p=>p.classList.toggle('selected',p===b));renderChart();}));
-document.getElementById('notifications').addEventListener('click',()=>toast('Source: '+(dataState.source==='demo'?'upstream demo snapshot':'authenticated API')+'. See the crew overview for general status.'));
+document.getElementById('notifications').addEventListener('click',()=>toast('Source: '+(dataState.source==='demo'?'upstream demo snapshot':'connected API')+'. See the crew overview for general status.'));
 // Capture validation events so dynamic forms also use English browser messages.
 document.addEventListener('input', event => { if (event.target.setCustomValidity) event.target.setCustomValidity(''); });
 document.addEventListener('invalid', event => {
@@ -16,3 +16,7 @@ document.addEventListener('invalid', event => {
   else if (field.validity.stepMismatch) field.setCustomValidity('Please enter a value in increments of '+field.step+'.');
 }, true);
 render();
+
+if (window.COSMOMEDIC_CONFIG?.autoConnect) {
+  connectToSource(window.COSMOMEDIC_CONFIG.apiOrigin, window.COSMOMEDIC_CONFIG.dataset).catch(error => toast(error.message));
+}

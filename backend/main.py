@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .auth import Sessions
 from .config import ROOT, Settings
 from .repository import Repository
 from .routes import router
@@ -14,10 +13,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     app = FastAPI(title="CosmoMedic Dashboard API", version="0.1.0",
                   description="Read-only prototype API using bundled fictional mission datasets.")
-    app.state.sessions = Sessions(settings)
     app.state.repository = Repository()
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins),
-                       allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"])
+                       allow_methods=["GET"], allow_headers=["Authorization", "Content-Type"])
 
     @app.middleware("http")
     async def no_cache_api(request: Request, call_next):

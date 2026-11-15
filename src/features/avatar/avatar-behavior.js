@@ -1,17 +1,13 @@
 // Animation reflects source status, never an inferred diagnosis or a mean threshold.
 (function(global) {
+  const model=typeof module!=='undefined'&&module.exports?require('../monitoring/monitoring-model.js'):global.Monitoring;
   function describe(people, missionDay) {
     let review=0, watch=0, missing=0;
     for(const person of people) {
-      const summary=person.summary||{}, metrics=Object.entries(person.metrics||{}).filter(([key,m])=>key!=='mood'&&!m.private);
-      const flags=metrics.filter(([,m])=>typeof m.value==='number'&&Number.isFinite(m.value)&&m.missionDay<=missionDay);
-      const areas=Object.values(summary.areas||{});
-      const severe=summary.status==='out_of_range'||summary.alertLevel==='high'||areas.includes('alert')||flags.some(([,m])=>m.status==='out_of_range');
-      const attention=summary.status==='watch'||summary.alertLevel==='medium'||areas.includes('warn')||flags.some(([,m])=>m.status==='watch');
-      const hasCurrent=flags.some(([,m])=>m.missionDay===missionDay);
-      if(severe)review++;
-      else if(attention)watch++;
-      else if(!hasCurrent||summary.status==='no_data')missing++;
+      const status=model.status(person,missionDay,global.COSMOMEDIC_CONFIG?.expectedDailyMetrics);
+      if(status.key==='review')review++;
+      else if(status.key==='followup')watch++;
+      else if(status.key==='unknown')missing++;
     }
     const state=review?'review':watch?'watch':missing||!people.length?'unknown':'routine';
     const label={routine:'Routine monitoring',watch:'Follow-up suggested',review:'Review required',unknown:'Limited current-day data'}[state];
@@ -22,7 +18,7 @@
   if(typeof module!=='undefined'&&module.exports){module.exports={describe};return;}
   global.CosmoAvatar={describe};
   const motionPreference=global.matchMedia?.('(prefers-reduced-motion: reduce)');
-  let paused=false;
+  let paused=true;
   global.applyAvatarBehaviors=function() {
     global.resetAvatarGaze?.();
     const reduced=!!motionPreference?.matches;

@@ -12,10 +12,10 @@ python -m venv .venv
 .\start-backend.ps1
 ```
 
-Choose a local password when prompted, then open http://127.0.0.1:8000. Select
-**Connect API** and sign in with `surgeon` and your chosen password. Both bundled
-fictional datasets are available through the API. API documentation is at
-http://127.0.0.1:8000/docs. See [backend setup and limits](backend/README.md).
+Open http://127.0.0.1:8000, select **Connect API**, choose the dataset and click
+**Load data**. There is no local account or login. Both bundled fictional datasets
+are available through the API. API documentation is at http://127.0.0.1:8000/docs.
+See [backend setup and limits](backend/README.md).
 
 For a frontend-only preview without Python dependencies:
 
@@ -31,12 +31,17 @@ Open http://127.0.0.1:4173. In VS Code, select **CosmoMedic: Preview dashboard**
 
 1. Start the included backend as above, or the upstream FastAPI backend according to its README (normally port 8000).
 2. Select **Connect API** in the dashboard. Enter the API origin, such as http://127.0.0.1:8000, without an /api suffix.
-3. Choose **CosmoMedic app** or **Synthetic mission** and sign in with an account belonging to that dataset.
-4. Only medical and admin accounts can enter this dashboard. Use **Refresh** to reload or **Disconnect** to return explicitly to demo data.
+3. Choose **CosmoMedic app** or **Synthetic mission** and select **Load data**.
+4. Use **Refresh** to reload or **Disconnect** to return explicitly to demo data.
 
-The included backend uses the password you configure locally. For local seeded development with the separate upstream backend only, its care-team account is surgeon with password spaceapps2026 (unless changed in backend configuration). Astronaut accounts are rejected by this dashboard.
+Connection defaults are in `src/config.js`: API origin, dataset and optional
+`autoConnect`. The dashboard does not manage users, passwords, login or logout.
+For protected upstream endpoints, the host application supplies its existing
+session through `getAccessToken` or its cookie integration. Authorization stays
+on the external API; removing the dashboard login does not make protected data
+public. See [integration configuration](backend/README.md#integracao-com-o-sistema-principal).
 
-For deployment, use HTTPS and configure backend CORS to allow the dashboard origin. The dashboard never needs database passwords, a JWT signing secret, or an admin API key. Access tokens remain in memory; page reload returns to the demo.
+For deployment, use HTTPS and configure backend CORS to allow the dashboard origin.
 
 ## Data and behavior
 
@@ -57,18 +62,20 @@ There is no astronaut mode, personal copilot, family-message panel, or health-da
 index.html                 # Dashboard shell and ordered script/style loading
 src/
   main.js                  # Control events and initial render
+  config.js                # API origin, dataset and host integration
   core/state.js            # Monitoring state and snapshot selection
   services/health-data.js   # API client and source projections
   shared/                  # Formatting, icons, portraits and toast messages
   styles/                  # Theme tokens and base layout
   features/
     overview/              # Individual metrics, history and mission metadata
-    connection/            # API sign-in, refresh and disconnect
+    connection/            # API source selection, refresh and disconnect
     crew/                  # Crew aggregation and team view
     avatar/                # Body callouts, motion, gaze and review prompts
     command/               # Mission summary and local cabin/rest simulations
     mission-impact/        # Analysis engine and comparison view
     navigation/            # Sidebar navigation and active section tracking
+    monitoring/            # Shared status, review context and selectable trends
 data/                      # Attributed offline demo datasets
 backend/                   # Python/FastAPI API, configuration and HTTP tests
 start-backend.ps1          # Start the local API and dashboard
@@ -93,21 +100,32 @@ With Node.js available:
 node --test tests/*.test.cjs
 ```
 
-Tests cover mappings, missing data, timestamps, privacy projections, role selection, read-only enforcement, rejected astronaut accounts, HTML escaping, and the simulator. Also verified against a fresh local upstream API with an isolated SQLite database: medical-account access to app and synthetic data, physical record reads, and rejected astronaut accounts. Browser visual review remains pending because the browser host was unavailable.
+Tests cover mappings, missing data, timestamps, privacy projections, host session delegation, read-only enforcement, login-free connection, HTML escaping, and the simulator. The Python API and JavaScript client are also checked together over HTTP using both bundled datasets. Browser visual review remains pending because the browser host was unavailable.
 
 See [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md) for the exact mappings, endpoints, account namespaces, and integration limits.
 
 ## Collective monitoring
 
-Team overview opens with status counts and a conceptual crew avatar. Its eight callouts show means for the current mission day, with contributing crew counts (for example, 3/4). Pressure means use the same complete systolic/diastolic pairs. Missing, older, future, unsupported, and private values do not enter the mean. No psychological mean is computed.
+Team overview opens with a source snapshot, consistent status counts, a filterable
+review queue and an always-visible individual readings table. Source review flags
+come first, followed by follow-up flags and data/status gaps. Search by name or ID
+and switch between daily and longitudinal indicators. Measurement ages and
+timestamps stay visible independently of API refresh time.
 
-Callout colors preserve individual metric flags, including older measurements, and the follow-up list keeps those crew members visible. If a metric has no per-metric source status, the interface does not invent clinical thresholds. The comparison table is expandable and displays latest individual readings with their measurement days. Select View details to open the individual avatar.
+The collective illustration and averages are secondary expandable content. Means
+retain current-day contributor counts and exclude missing, older, future,
+unsupported and private values. No psychological mean is computed.
+
+Queue, table, individual context and avatar share the same status model. Open
+individual details for selectable physical trends, personal references and chart
+values in a table. Optional review tracking and collection context come from the
+main system. See [monitoring behavior and integration](MONITORING.md).
 
 ## Source-linked avatar behavior
 
 Both avatars have routine, watch, review, and limited-data states. Movements follow existing general/metric source flags, including older flags; no numeric threshold or diagnosis is introduced. The collective avatar uses the highest-priority crew flag, never the average. Missing current-day coverage keeps the avatar neutral when there are no source flags. Psychological values are excluded.
 
-Pause motion applies to both avatars and persists while switching views or refreshing data during the session. The browser reduced-motion preference disables animation. All motion uses CSS and existing SVG groups; no new requests, timers, or raster assets are required. Status labels remain visible when motion is paused or reduced. Actual visual animation review remains pending because browser access is unavailable in this environment.
+Motion starts paused. The motion control applies to both avatars and persists while switching views or refreshing data during the session. The browser reduced-motion preference disables animation. All motion uses CSS and existing SVG groups; no new requests, timers, or raster assets are required. Status labels remain visible when motion is paused or reduced. Actual visual animation review remains pending because browser access is unavailable in this environment.
 
 ## Avatar review prompts
 

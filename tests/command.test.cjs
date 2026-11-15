@@ -28,7 +28,8 @@ test('canonical demo profiles, mission, and unavailable metrics render',()=>{
   assert.equal(run('crew.length'),4);
   assert.equal(run('selected.id'),'ast-01');
   assert.equal(run('dataState.mission.today'),12);
-  assert.ok(get('metrics').innerHTML.includes('UNSUPPORTED'));
+  assert.ok(!get('metrics').innerHTML.includes('Blood glucose'));
+  assert.ok(get('comparison-availability').textContent.includes('Blood glucose'));
   assert.ok(get('crew-list').innerHTML.includes('Ana Souza'));
   assert.ok(get('trend-chart').innerHTML.includes('Day 11'));
   assert.equal(run('summaryScore(selected)'),run('selected.summary.overallScore'));
@@ -38,7 +39,8 @@ test('dashboard is monitoring only, with private mood and no personal mode',()=>
   assert.equal(run('typeof openCheckin'),'undefined');
   assert.equal(run('typeof switchMode'),'undefined');
   assert.equal(run('selected.metrics.mood.value'),null);
-  assert.ok(get('metrics').innerHTML.includes('PRIVATE'));
+  assert.ok(get('metrics').innerHTML.includes('Private information is excluded'));
+  assert.ok(!get('metrics').innerHTML.includes('<h3>Mood</h3>'));
   assert.ok(get('metrics').innerHTML.includes('Blood pressure'));
   assert.ok(get('mode-description').textContent.includes('care team'));
   assert.ok(!get('companion-content').innerHTML.includes('family-message'));
@@ -59,4 +61,102 @@ test('untrusted names are escaped in crew markup',()=>{
   const {get,run}=setup();run("selected.name='<img src=x onerror=alert(1)>';renderCrew()");
   assert.ok(!get('crew-list').innerHTML.includes('<img'));
   assert.ok(get('crew-list').innerHTML.includes('&lt;img'));
+});
+
+
+test('data source dialog has no login or password fields',()=>{
+  const {get,run}=setup();
+  run('openConnection()');
+  const html=run('connectionDialog.innerHTML');
+  assert.ok(html.includes('name="origin"'));
+  assert.ok(html.includes('name="dataset"'));
+  assert.ok(!/password|username|Sign in|login/i.test(html));
+});
+
+test('connect, refresh and disconnect work without a local account',async()=>{
+  const {get,run}=setup();
+  run(`HealthData.Client=class {
+    async loadApp(){return {...demoSnapshot(),source:'api-app'};}
+  };`);
+  await run("connectToSource('http://127.0.0.1:8000','app')");
+  assert.equal(run('dataState.source'),'api-app');
+  assert.equal(get('refresh-data').hidden,false);
+  assert.ok(get('connection-status').textContent.includes('API'));
+  await run('refreshData()');
+  assert.equal(run('dataState.source'),'api-app');
+  run('disconnect()');
+  assert.equal(run('dataState.source'),'demo');
+  assert.equal(run('client'),null);
+  assert.equal(get('refresh-data').hidden,true);
+});
+
+test('empty or failed API loads preserve the previous monitoring data',async()=>{
+  const {run}=setup();
+  run("HealthData.Client=class {async loadApp(){return {...demoSnapshot(),crew:[]};}};");
+  await assert.rejects(()=>run("connectToSource('http://127.0.0.1:8000','app')"),/No crew/);
+  assert.equal(run('dataState.source'),'demo');
+  assert.equal(run('crew.length'),4);
+  assert.equal(run('client'),null);
+  run("HealthData.Client=class {async loadApp(){throw new Error('API unavailable');}};");
+  await assert.rejects(()=>run("connectToSource('http://127.0.0.1:8000','app')"),/API unavailable/);
+  assert.equal(run('dataState.source'),'demo');
+  assert.equal(run('busy'),false);
+});
+
+test('queue, table, individual status and avatar use the same source flag',()=>{
+  const {get,run}=setup();
+  run("crew[0].metrics.diastolic.status='out_of_range';crew[0].summary={status:'normal'};render()");
+  assert.equal(run('generalStatus(crew[0]).key'),'review');
+  assert.equal(run('teamAttention(crew[0]).key'),'review');
+  assert.equal(run('CosmoAvatar.describe([crew[0]],dataState.mission.today).state'),'review');
+  assert.ok(get('comparison-body').innerHTML.includes('Source review flag'));
+  assert.ok(get('review-queue-list').innerHTML.includes('Diastolic'));
+  assert.ok(run('individualContext.innerHTML').includes('Source review flag'));
+  assert.ok(get('metrics').innerHTML.includes('SOURCE REVIEW FLAG'));
+});
+
+test('crew search, status filters and column sets preserve explicit no-result and unsupported states',()=>{
+  const {get,run}=setup();
+  run("crewFilter.search='does not exist';renderTeamResults()");
+  assert.ok(get('comparison-body').innerHTML.includes('No matching crew members'));
+  run("crewFilter.search='ORB3-ANA';renderTeamResults()");
+  assert.equal(run('visibleCrew().length'),1);
+  run("crewFilter.search='';crewFilter.status='review';renderTeamResults()");
+  assert.equal(run("visibleCrew().every(p=>generalStatus(p).key==='review')"),true);
+  run("crewFilter.status='all';crewFilter.columns='longitudinal';renderTeamResults()");
+  assert.ok(get('comparison-head').innerHTML.includes('Bone density'));
+});
+
+test('individual trends support pressure and sleep, with baseline, date precision and missing-day gaps',()=>{
+  const {get,run}=setup();
+  run("trendMetric='sleep';renderMonitoringChart()");
+  assert.ok(get('trend-chart').innerHTML.includes('Sleep duration'));
+  assert.ok(get('trend-chart').innerHTML.includes('Personal reference'));
+  assert.equal(run("measuredTime({timestamp:'2027-03-01'})"),'2027-03-01 · time not supplied');
+  run("trendMetric='heart';selected.historyByMetric.heart=[{missionDay:10,value:60},{missionDay:12,value:62}];renderMonitoringChart()");
+  assert.equal((get('trend-chart').innerHTML.match(/<polyline /g)||[]).length,2);
+  assert.ok(get('trend-chart').innerHTML.includes('Read chart values as a table'));
+});
+
+test('review tracking is externally supplied and never created by opening details',()=>{
+  const {run}=setup();
+  assert.equal(run('reviewRecord(selected).label'),'Review tracking not connected');
+  run("window.COSMOMEDIC_CONFIG.reviewRecords[selected.id]={status:'in_review',assignee:'Care team',url:'javascript:alert(1)'}");
+  assert.equal(run('reviewRecord(selected).label'),'Under review');
+  assert.equal(run('reviewRecord(selected).url'),null);
+  assert.equal(run('typeof markReviewed'),'undefined');
+});
+
+test('failed refresh retains readings and exposes stale snapshot state in both views',async()=>{
+  const {get,run}=setup();
+  run("HealthData.Client=class {async loadApp(){if(this.loaded)throw new Error('Source unavailable');this.loaded=true;return {...demoSnapshot(),source:'api-app'};}};");
+  await run("connectToSource('http://127.0.0.1:8000','app')");
+  const previousValue=run('selected.metrics.heart.value');
+  await run('refreshData()');
+  assert.equal(run('selected.metrics.heart.value'),previousValue);
+  assert.equal(run('dataState.source'),'api-app');
+  assert.equal(run('dataState.connectionState'),'error');
+  assert.ok(run('teamPanel.innerHTML').includes('Refresh failed'));
+  assert.ok(run('individualContext.innerHTML').includes('Refresh failed'));
+  assert.ok(get('.system-status').textContent.includes('refresh failed'));
 });

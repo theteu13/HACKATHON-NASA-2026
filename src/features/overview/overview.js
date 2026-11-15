@@ -7,21 +7,26 @@ function metricNote(m) {
   if (m.private) return 'Private information - not shared';
   if (m.unsupported) return 'Not available in the app schema';
   if (m.value === null) return 'Not recorded';
-  return `${m.missionDay ? 'Mission day ' + m.missionDay + ' · ' : ''}${provenanceLabel(m.provenance)}`;
+  return `${Monitoring.age(m,dataState.mission.today).text} · ${typeof measuredTime === 'function' ? measuredTime(m) : m.timestamp || 'Timestamp not supplied'} · ${provenanceLabel(m.provenance)}`;
 }
 function renderMetrics() {
   const m = selected.metrics;
-  const definitions = [
-    ['Blood pressure','heart',m.systolic.value === null ? '—' : `${format(m.systolic.value)}/${format(m.diastolic.value)}`,'mmHg',m.systolic],
-    ['Heart rate','activity',format(m.heart.value),'bpm',m.heart],
-    ['Blood glucose','drop',format(m.glucose.value),'mg/dL',m.glucose],
-    ['Body temperature','temperature',format(m.temperature.value),'°C',m.temperature],
-    ['Daily sleep','moon',format(m.sleep.value),'h',m.sleep],
-    ['Mood','smile',format(m.mood.value),'/5',m.mood]
-  ];
-  document.getElementById('metrics').innerHTML = definitions.map(([title, symbol, value, unit, metric]) => `<article class="metric"><div class="metric-top"><span class="metric-icon">${icon(symbol)}</span><span class="metric-tag">${metric.private ? 'PRIVATE' : metric.unsupported ? 'UNSUPPORTED' : 'READ ONLY'}</span></div><h3>${title}</h3><div class="metric-value">${value}<small>${unit}</small></div><div class="metric-bottom">${escapeHTML(metricNote(metric))}</div>${title === 'Mood' && metric.value !== null ? `<div class="mood-dots" aria-label="${HealthData.moodLabels[metric.value] || 'Recorded mood'}">${Array.from({length:5},(_,i)=>`<span class="${i<metric.value?'filled':''}"></span>`).join('')}</div>` : ''}</article>`).join('');
+  const flags = Monitoring.status(selected,dataState.mission.today,window.COSMOMEDIC_CONFIG.expectedDailyMetrics).flags;
+  const definitions = [['systolic','Blood pressure','heart'],['heart','Heart rate','activity'],
+    ['sleep','Daily sleep','moon'],['temperature','Body temperature','temperature'],
+    ['glucose','Blood glucose','drop'],['nutrition','Recorded intake','leaf']];
+  document.getElementById('metrics').innerHTML = definitions.filter(([key]) => !m[key].unsupported && !m[key].private)
+    .map(([key,title,symbol]) => {
+      const metric = m[key];
+      const related = flags.filter(flag => flag.key === key || key === 'systolic' && flag.key === 'diastolic');
+      const tag = related.some(flag => flag.severity === 'review') ? 'SOURCE REVIEW FLAG' : related.length ? 'SOURCE WATCH FLAG' : 'RECORDED VALUE';
+      const value = typeof readingText === 'function' ? readingText(selected,key) :
+        key === 'systolic' ? `${format(metric.value)}/${format(m.diastolic.value)}` : format(metric.value);
+      return `<article class="metric"><div class="metric-top"><span class="metric-icon">${icon(symbol)}</span><span class="metric-tag">${tag}</span></div><h3>${title}</h3><div class="metric-value">${value}<small>${escapeHTML(metric.unit)}</small></div><div class="metric-bottom">${escapeHTML(metricNote(metric))}</div></article>`;
+    }).join('') + '<p class="metric-privacy">Only supported physical indicators are shown. Private information is excluded. Recorded intake may be incomplete.</p>';
 }
 function renderChart() {
+  if (typeof renderMonitoringChart === 'function') { renderMonitoringChart(); return; }
   const day = dataState.mission.today, first = period === 0 ? 1 : Math.max(1, day - period + 1);
   const points = selected.history.filter(p => p.missionDay >= first && p.missionDay <= day && p.value !== null);
   document.getElementById('chart-period').textContent = `Mission days ${first}–${day}`;
@@ -39,7 +44,7 @@ function renderAdditional() {
 }
 function renderRecords() {
   const rows = selected.logs.slice(-8).reverse();
-  document.querySelector('.records-panel .subtle').textContent = dataState.source === 'demo' ? 'Received demo records' : 'Authenticated API records';
+  document.querySelector('.records-panel .subtle').textContent = dataState.source === 'demo' ? 'Received demo records' : 'Received API records';
   document.getElementById('records-list').innerHTML = rows.length ? rows.map(l=>`<div class="record"><span>${icon('check')}</span><strong>${escapeHTML(({measurement:l.data.metric?.replaceAll('_',' '),sleep:'Sleep',mood:'Mood',meal:'Meal',exercise:'Exercise',radiation:'Radiation',injury:'Injury'})[l.type] || l.type)}</strong><small>Day ${l.missionDay} · ${escapeHTML(new Date(l.timestamp).toLocaleString('en-US',{dateStyle:'short',timeStyle:'short'}))}</small></div>`).join('') : '<p class="empty-records">No received records available for this source.</p>';
 }
 function updateMissionUI() {
@@ -61,10 +66,10 @@ function updateMissionUI() {
   document.querySelector('.header-date').textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const label = dataState.source === 'demo' ? 'Demo · upstream seed' : dataState.source === 'api-app' ? 'API · CosmoMedic app' : 'API · synthetic mission';
   document.querySelector('.demo-badge').textContent = label;
-  document.querySelector('.system-status').textContent = dataState.source === 'demo' ? 'Simulated telemetry' : 'API connected · source labeled';
-  document.querySelector('footer > span:nth-child(2)').textContent = dataState.source === 'demo' ? 'Demo seed · fictional data · no clinical interpretation' : 'Authenticated API · provenance shown · not a medical device';
-  if (dataState.dataNotice) document.querySelector('footer > span:nth-child(2)').textContent = `${dataState.dataNotice} · authenticated API · no clinical interpretation`;
-  document.getElementById('connection-status').textContent = `${label}${client ? ' · '+client.user.role : ''}`;
+  document.querySelector('.system-status').textContent = dataState.connectionState === 'error' ? 'API refresh failed · snapshot retained' : dataState.source === 'demo' ? 'Fictional seed snapshot' : 'API snapshot · manual refresh';
+  document.querySelector('footer > span:nth-child(2)').textContent = dataState.source === 'demo' ? 'Demo seed · fictional data · no clinical interpretation' : 'API · provenance shown · not a medical device';
+  if (dataState.dataNotice) document.querySelector('footer > span:nth-child(2)').textContent = `${dataState.dataNotice} · API · no clinical interpretation`;
+  document.getElementById('connection-status').textContent = label;
 }
 function render() {
   renderCrew(); updateMissionUI();
@@ -73,6 +78,7 @@ function render() {
   document.getElementById('astronaut-subtitle').textContent = `${selected.crewId || selected.role} · ${provenanceLabel(selected.provenance)}`;
   if (typeof renderCommand === 'function') renderCommand();
   if (typeof renderTeamView === 'function') renderTeamView();
+  if (typeof renderMonitoringView === 'function') renderMonitoringView();
   if (typeof applyAvatarBehaviors === 'function') applyAvatarBehaviors();
   if (typeof applyAvatarNeeds === 'function') applyAvatarNeeds();
   if (typeof renderImpactView === 'function') renderImpactView();

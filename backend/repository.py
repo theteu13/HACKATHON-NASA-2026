@@ -41,7 +41,9 @@ class Repository:
             summary = next((row for row in self.app["dailySummaries"]
                             if row["astronautId"] == person["id"] and row["missionDay"] == day), {})
             crew.append({
-                "astronaut": {key: person[key] for key in ("id", "name", "crewId")},
+                "astronaut": {**{key: person[key] for key in ("id", "name", "crewId")},
+                              "baseline": {key: value for key, value in person.get("baseline", {}).items()
+                                           if key in {"restingHr", "restingBp", "usualSleepH", "boneDensity"}}},
                 "overallScore": summary.get("overallScore"),
                 "logsToday": sum(log["astronautId"] == person["id"] and log["missionDay"] == day
                                  and log["type"] in {"measurement", "sleep", "meal"}

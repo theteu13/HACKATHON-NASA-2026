@@ -1,4 +1,4 @@
-// Ground Control monitoring only. The API authorizes medical and admin accounts.
+// Ground Control monitoring only. Access is managed by the host system.
 const commandState={task:'maintenance',baseSleep:7,loss:2,extra:1,cabin:{light:'rest',noise:20,temperature:22},draft:null};
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 const modeArea=document.createElement('section');modeArea.className='mode-area';modeArea.innerHTML='<div><span class="eyebrow">GROUND CONTROL</span><p id="mode-description">Crew monitoring for the care team.</p></div><span class="tiny-chip">READ-ONLY MONITORING</span><p class="demo-privacy" id="privacy-description"></p>';
@@ -11,21 +11,17 @@ workspace.after(crewDetails);
 const operationsDialog=document.createElement('dialog');operationsDialog.id='operations-dialog';document.body.append(operationsDialog);
 function summaryScore(person){const value=person.summary.overallScore;return typeof value==='number'&&Number.isFinite(value)?clamp(value,0,100):null;}
 function generalStatus(person){
-  const s=person.summary;
-  if(s.status==='out_of_range'||s.alertLevel==='high'||Object.values(s.areas||{}).includes('alert'))return {color:'danger',text:'Review required'};
-  if(s.status==='watch'||s.alertLevel==='medium'||Object.values(s.areas||{}).includes('warn'))return {color:'gold',text:'Follow-up suggested'};
-  if(s.status==='no_data'||(!s.status&&s.overallScore==null))return {color:'muted',text:'No status available'};
-  return {color:'teal',text:'Routine monitoring'};
+  return Monitoring.status(person,dataState.mission.today,window.COSMOMEDIC_CONFIG.expectedDailyMetrics);
 }
 function renderCommand(){
   if(!document.getElementById('readiness-content'))return;
   const isDemo=dataState.source==='demo',synthetic=dataState.source==='api-synthetic';
   document.getElementById('mode-description').textContent='Crew monitoring for the care team.';
-  document.getElementById('privacy-description').textContent=isDemo?'Fictional mission data for demonstration.':'Medical/admin access. Psychological details and private messages are excluded from the interface.';
-  document.querySelector('.page-heading h1').innerHTML='One crew. One mission<span>.</span>';
-  document.querySelector('.page-heading p:last-child').textContent='Monitor crew health, follow trends, and review mission priorities.';
+  document.getElementById('privacy-description').textContent=isDemo?'Fictional mission data for demonstration.':'Read-only API data. Psychological details and private messages are excluded from the interface.';
+  document.querySelector('.page-heading h1').innerHTML='Crew monitoring<span>.</span>';
+  document.querySelector('.page-heading p:last-child').textContent='Review source flags, check data coverage, and follow individual changes.';
   document.querySelector('.crew-section .subtle').textContent='Select a crew member to review received data';
-  document.querySelector('.operator strong').textContent=client?.user.displayName || 'Mission Control';
+  document.querySelector('.operator strong').textContent='Mission Control';
   document.querySelector('.operator small').textContent='Care team';
   document.getElementById('readiness-heading').textContent='Crew health summary';
   document.getElementById('score-source').textContent=isDemo?'SEED SNAPSHOT':synthetic?'SYNTHETIC DATA':'API - RULE DERIVED';

@@ -22,17 +22,38 @@ test('synthetic columns retain distinct units and sparse measurement dates',()=>
   assert.equal(p.metrics.bone.value,1.1);assert.equal(p.metrics.bone.missionDay,4);
   assert.equal(p.metrics.glucose.value,95);assert.equal(p.metrics.glucose.unsupported,undefined);assert.equal(p.metrics.immune.value,null);
 });
-test('API client rejects astronaut accounts before loading crew data',async()=>{
-  const paths=[];
-  const c=new H.Client('http://127.0.0.1:8000',async url=>{paths.push(url);return {ok:true,status:200,json:async()=>url.endsWith('/login')?{accessToken:'test-token'}:{role:'astronaut'}};});
-  await assert.rejects(()=>c.login('astronaut','test'),/care team only/);
-  assert.equal(c.token,null);assert.equal(c.user,null);assert.equal(paths.length,2);
-  await assert.rejects(()=>c.loadApp(),/Care-team access/);
+test('API client delegates session headers to the host without owning login',async()=>{
+  const calls=[];
+  let accessToken='host-token-1';
+  const c=new H.Client('http://127.0.0.1:8000',async(url,options)=>{
+    calls.push({url,options});return {ok:true,status:200,json:async()=>({crew:[]})};
+  },{getAccessToken:async()=>accessToken});
+  assert.equal(typeof c.login,'undefined');
+  await c.request('/api/v1/app/ground/crew');
+  accessToken='host-token-2';
+  await c.request('/api/v1/app/ground/crew');
+  assert.equal(calls[0].options.headers.Authorization,'Bearer host-token-1');
+  assert.equal(calls[1].options.headers.Authorization,'Bearer host-token-2');
+  assert.ok(calls.every(call=>call.options.method==='GET'&&!call.url.includes('/auth/')));
 });
+
+test('API client supports unauthenticated demo reads and reports external access failures',async()=>{
+  let options;
+  const c=new H.Client('http://127.0.0.1:8000',async(url,request)=>{
+    options=request;return {ok:true,status:200,json:async()=>({latest:[]})};
+  });
+  await c.request('/api/v1/app/ground/environment');
+  assert.equal(options.headers.Authorization,undefined);
+  assert.equal(options.credentials,'omit');
+  const denied=new H.Client('https://api.example',async()=>({ok:false,status:401,json:async()=>({})}));
+  await assert.rejects(()=>denied.loadApp(),/main system/);
+});
+
 test('API client blocks health-data writes and rejects unsafe origins',async()=>{
   assert.throws(()=>new H.Client('http://example.com'));assert.throws(()=>new H.Client('https://user:secret@example.com'));assert.throws(()=>new H.Client('https://example.com/api'));
   let calls=0;
   const c=new H.Client('http://127.0.0.1:8000',async()=>{calls++;});
   await assert.rejects(()=>c.request('/api/v1/app/me/logs',{method:'POST',body:{}}),/read-only/);
+  await assert.rejects(()=>c.request('/api/v1/auth/login',{method:'POST',body:{}}),/read-only/);
   assert.equal(calls,0);assert.equal(typeof c.saveLog,'undefined');
 });

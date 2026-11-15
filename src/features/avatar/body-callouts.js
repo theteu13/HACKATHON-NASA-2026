@@ -8,7 +8,7 @@ function bodyCalloutMarkup(m, collective = false) {
     { key:'nutrition', label:'Nutrition', symbol:'leaf', metric:m.nutrition, area:[480,355], value:format(m.nutrition.value) },
     { key:'sleep', label:'Sleep', symbol:'moon', metric:m.sleep, area:[520,155], value:format(m.sleep.value) },
     { key:'heart', label:'Heart rate', symbol:'activity', metric:m.heart, area:[525,265], value:format(m.heart.value) },
-    { key:'immune', label:'White blood cells', symbol:'shield', metric:m.immune, area:[525,325], value:format(m.immune.value) },
+    { key:'immune', label:'White blood cells', symbol:'activity', metric:m.immune, area:[525,325], value:format(m.immune.value) },
     { key:'bone', label:'Bone density', symbol:'bone', metric:m.bone, area:[520,470], value:format(m.bone.value) }
   ];
   const tone = metric => metric.status==='out_of_range'?'alert':metric.status==='watch'?'watch':metric.value===null?'empty':metric.status==='normal'?'normal':'recorded';
@@ -30,5 +30,5 @@ function renderBodyCallouts() {
   const markup=bodyCalloutMarkup(selected.metrics);
   document.getElementById('body-callouts').innerHTML=markup.cards;
   document.getElementById('body-connectors').innerHTML=markup.lines;
-  document.getElementById('body-avatar-caption').textContent=selected.name+' · connected health overview';
+  document.getElementById('body-avatar-caption').textContent=selected.name+' · conceptual illustration. Connector positions do not localize a condition.';
 }
