@@ -31,25 +31,23 @@ test('canonical demo profiles, mission, and unavailable metrics render',()=>{
   assert.ok(get('trend-chart').innerHTML.includes('Day 11'));
   assert.equal(run('summaryScore(selected)'),run('selected.summary.overallScore'));
 });
-test('ground view clears personal details and role changes close dialogs',()=>{
+test('dashboard is monitoring only, with private mood and no personal mode',()=>{
   const {get,run}=setup();
-  get('checkin-dialog').open=true;
-  run("switchMode('ground')");
-  for(const id of ['metrics','trend-chart','additional-metrics','records-list'])assert.equal(get(id).innerHTML,'');
-  assert.equal(run('personalDetails.hidden'),true);
-  assert.equal(get('checkin-dialog').open,false);
-  assert.equal(get('open-checkin').hidden,true);
+  assert.equal(run('typeof openCheckin'),'undefined');
+  assert.equal(run('typeof switchMode'),'undefined');
+  assert.equal(run('selected.metrics.mood.value'),null);
+  assert.ok(get('metrics').innerHTML.includes('PRIVATE'));
+  assert.ok(get('metrics').innerHTML.includes('Blood pressure'));
+  assert.ok(get('mode-description').textContent.includes('care team'));
   assert.ok(!get('companion-content').innerHTML.includes('family-message'));
-  run("switchMode('astronaut')");assert.ok(get('metrics').innerHTML.includes('Mood'));
 });
-test('API session cannot switch into another role',()=>{
+test('received records exclude psychological and private logs',()=>{
   const {run}=setup();
-  run("client={user:{role:'astronaut'}};switchMode('ground')");
-  assert.equal(run('viewMode'),'astronaut');
+  assert.equal(run("crew.every(c=>c.logs.every(l=>['measurement','sleep','meal'].includes(l.type)))"),true);
 });
 test('simulator preserves source records and uses an explicit ground assumption',()=>{
   const {get,run}=setup();
-  run("switchMode('ground');openSimulator()");
+  run('openSimulator()');
   assert.equal(run('commandState.baseSleep'),7);
   assert.equal(run('selected.logs.length'),run('dataState.crew[0].logs.length'));
   assert.ok(get('simulation-result').innerHTML.includes('not a personal health forecast'));

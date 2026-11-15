@@ -2,15 +2,16 @@
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format = value => typeof value === 'number' && Number.isFinite(value) ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value) : '—';
 const seed = window.COSMOMEDIC_DEMO;
-const demoStorageKey = 'cosmomedic-app-logs-v1';
-let localLogs = [], client = null, selected, crew = [], period = 7, sessionVersion = 0, busy = false, toastTimer;
-let dataState, viewMode = 'astronaut';
-try { const saved = JSON.parse(localStorage.getItem(demoStorageKey) || '[]'); localLogs = Array.isArray(saved) ? saved.filter(l => HealthData.validDemoLog(l) && seed.astronauts.some(a => a.id === l.astronautId)) : []; } catch { localLogs = []; }
+let client = null, selected, crew = [], period = 7, sessionVersion = 0, busy = false, toastTimer;
+let dataState;
 function demoSnapshot() {
-  const logs = [...seed.logs, ...localLogs];
   return { source: 'demo', mission: seed.mission, summaries: seed.dailySummaries, environments: seed.environmentReadings,
-    crew: seed.astronauts.map(a => HealthData.appPerson(a, logs,
-      seed.dailySummaries.find(s => s.astronautId === a.id && s.missionDay === seed.mission.today) || {}, seed.mission.today)) };
+    crew: seed.astronauts.map(a => {
+      const person = HealthData.appPerson(a, seed.logs.filter(l => ['measurement','sleep','meal'].includes(l.type)),
+        seed.dailySummaries.find(s => s.astronautId === a.id && s.missionDay === seed.mission.today) || {}, seed.mission.today);
+      person.metrics.mood = { value: null, unit: '/5', private: true };
+      return person;
+    }) };
 }
 function commitSnapshot(snapshot) {
   const previousId = selected?.id;
@@ -26,6 +27,7 @@ function renderCrew() {
   document.querySelectorAll('[data-crew]').forEach(button => button.addEventListener('click', () => { selected = crew.find(c => c.id === button.dataset.crew); render(); }));
 }
 function metricNote(m) {
+  if (m.private) return 'Private information - not shared';
   if (m.unsupported) return 'Not available in the app schema';
   if (m.value === null) return 'Not recorded';
   return `${m.missionDay ? 'Mission day ' + m.missionDay + ' · ' : ''}${provenanceLabel(m.provenance)}`;
@@ -40,7 +42,7 @@ function renderMetrics() {
     ['Daily sleep','moon',format(m.sleep.value),'h',m.sleep],
     ['Mood','smile',format(m.mood.value),'/5',m.mood]
   ];
-  document.getElementById('metrics').innerHTML = definitions.map(([title, symbol, value, unit, metric]) => `<article class="metric"><div class="metric-top"><span class="metric-icon">${icon(symbol)}</span><span class="metric-tag">${metric.unsupported ? 'UNSUPPORTED' : 'REQUIRED'}</span></div><h3>${title}</h3><div class="metric-value">${value}<small>${unit}</small></div><div class="metric-bottom">${escapeHTML(metricNote(metric))}</div>${title === 'Mood' && metric.value !== null ? `<div class="mood-dots" aria-label="${HealthData.moodLabels[metric.value] || 'Recorded mood'}">${Array.from({length:5},(_,i)=>`<span class="${i<metric.value?'filled':''}"></span>`).join('')}</div>` : ''}</article>`).join('');
+  document.getElementById('metrics').innerHTML = definitions.map(([title, symbol, value, unit, metric]) => `<article class="metric"><div class="metric-top"><span class="metric-icon">${icon(symbol)}</span><span class="metric-tag">${metric.private ? 'PRIVATE' : metric.unsupported ? 'UNSUPPORTED' : 'READ ONLY'}</span></div><h3>${title}</h3><div class="metric-value">${value}<small>${unit}</small></div><div class="metric-bottom">${escapeHTML(metricNote(metric))}</div>${title === 'Mood' && metric.value !== null ? `<div class="mood-dots" aria-label="${HealthData.moodLabels[metric.value] || 'Recorded mood'}">${Array.from({length:5},(_,i)=>`<span class="${i<metric.value?'filled':''}"></span>`).join('')}</div>` : ''}</article>`).join('');
 }
 function renderChart() {
   const day = dataState.mission.today, first = period === 0 ? 1 : Math.max(1, day - period + 1);
@@ -60,8 +62,8 @@ function renderAdditional() {
 }
 function renderRecords() {
   const rows = selected.logs.slice(-8).reverse();
-  document.querySelector('.records-panel .subtle').textContent = dataState.source === 'demo' ? 'App-shaped demo logs' : 'Authenticated API records';
-  document.getElementById('records-list').innerHTML = rows.length ? rows.map(l=>`<div class="record"><span>${icon('check')}</span><strong>${escapeHTML(({measurement:l.data.metric?.replaceAll('_',' '),sleep:'Sleep',mood:'Mood',meal:'Meal',exercise:'Exercise',radiation:'Radiation',injury:'Injury'})[l.type] || l.type)}</strong><small>Day ${l.missionDay} · ${escapeHTML(new Date(l.timestamp).toLocaleString('en-US',{dateStyle:'short',timeStyle:'short'}))}</small></div>`).join('') : '<p class="empty-records">No app logs available. Synthetic mission records are read-only.</p>';
+  document.querySelector('.records-panel .subtle').textContent = dataState.source === 'demo' ? 'Received demo records' : 'Authenticated API records';
+  document.getElementById('records-list').innerHTML = rows.length ? rows.map(l=>`<div class="record"><span>${icon('check')}</span><strong>${escapeHTML(({measurement:l.data.metric?.replaceAll('_',' '),sleep:'Sleep',mood:'Mood',meal:'Meal',exercise:'Exercise',radiation:'Radiation',injury:'Injury'})[l.type] || l.type)}</strong><small>Day ${l.missionDay} · ${escapeHTML(new Date(l.timestamp).toLocaleString('en-US',{dateStyle:'short',timeStyle:'short'}))}</small></div>`).join('') : '<p class="empty-records">No received records available for this source.</p>';
 }
 function updateMissionUI() {
   const m = dataState.mission;
@@ -88,12 +90,9 @@ function updateMissionUI() {
 }
 function render() {
   renderCrew(); updateMissionUI();
-  const ground = viewMode === 'ground';
-  if (ground) ['metrics','trend-chart','additional-metrics','records-list'].forEach(id=>document.getElementById(id).replaceChildren());
-  else { renderMetrics();renderChart();renderAdditional();renderRecords(); }
+  renderMetrics();renderChart();renderAdditional();renderRecords();
   document.getElementById('astronaut-title').textContent = `Health overview: ${selected.name}`;
   document.getElementById('astronaut-subtitle').textContent = `${selected.crewId || selected.role} · ${provenanceLabel(selected.provenance)}`;
-  document.getElementById('open-checkin').hidden = ground || dataState.source === 'api-synthetic';
   if (typeof renderCommand === 'function') renderCommand();
 }
 const connectionBar = document.createElement('section'); connectionBar.className = 'connection-bar';
@@ -101,7 +100,7 @@ connectionBar.innerHTML = '<span id="connection-status" role="status"></span><di
 document.querySelector('.mission-summary').before(connectionBar);
 const connectionDialog = document.createElement('dialog');connectionDialog.id='connection-dialog';document.body.append(connectionDialog);
 function openConnection() {
-  connectionDialog.innerHTML = `<form id="connection-form"><div class="panel-heading"><div><p class="eyebrow">COSMOMEDIC DATA</p><h2>Connect to the backend</h2></div><button type="button" class="icon-button" id="close-connection" aria-label="Close">✕</button></div><p class="form-description">Sign in with an existing backend account. Your role determines access. Tokens stay in memory for this session.</p><label class="task-label">API origin<input name="origin" type="url" value="http://127.0.0.1:8000" placeholder="https://your-api.example" required></label><label class="task-label">Dataset<select name="dataset"><option value="app">CosmoMedic app · Orbit-3</option><option value="synthetic">Synthetic mission · all six vital signs</option></select></label><div class="form-grid"><label>Username / Crew ID<input name="username" autocomplete="username" required maxlength="100"></label><label>Password / PIN<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label></div><p class="command-note">App and synthetic IDs are separate. Use a matching account. HTTP is accepted only for localhost development.</p><p id="connection-error" role="alert"></p><button class="button primary" id="submit-connection">Sign in and load data</button></form>`;
+  connectionDialog.innerHTML = `<form id="connection-form"><div class="panel-heading"><div><p class="eyebrow">COSMOMEDIC DATA</p><h2>Connect to the backend</h2></div><button type="button" class="icon-button" id="close-connection" aria-label="Close">✕</button></div><p class="form-description">Sign in with a medical or admin account to monitor the crew. Astronaut accounts cannot use this dashboard. Tokens stay in memory for this session.</p><label class="task-label">API origin<input name="origin" type="url" value="http://127.0.0.1:8000" placeholder="https://your-api.example" required></label><label class="task-label">Dataset<select name="dataset"><option value="app">CosmoMedic app · Orbit-3</option><option value="synthetic">Synthetic mission · all six vital signs</option></select></label><div class="form-grid"><label>Care-team username<input name="username" autocomplete="username" required maxlength="100"></label><label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label></div><p class="command-note">Read-only monitoring. HTTP is accepted only for localhost development.</p><p id="connection-error" role="alert"></p><button class="button primary" id="submit-connection">Sign in and load data</button></form>`;
   document.getElementById('close-connection').addEventListener('click',()=>connectionDialog.close());
   document.getElementById('connection-form').addEventListener('submit',connectAPI);
   connectionDialog.showModal();
@@ -115,9 +114,9 @@ async function connectAPI(event) {
     const nextClient=new HealthData.Client(values.origin);await nextClient.login(values.username,values.password);
     const snapshot=await (values.dataset==='app'?nextClient.loadApp():nextClient.loadSynthetic());
     if(version!==sessionVersion)return;
-    client=nextClient;viewMode=client.user.role==='astronaut'?'astronaut':'ground';commitSnapshot(snapshot);
+    client=nextClient;commitSnapshot(snapshot);
     document.getElementById('refresh-data').hidden=false;document.getElementById('return-demo').hidden=false;
-    form.reset();connectionDialog.close();document.getElementById('checkin-dialog').close();render();toast('Connected. Showing data from the selected API dataset.');
+    form.reset();connectionDialog.close();render();toast('Connected. Showing data from the selected API dataset.');
   } catch(error) { document.getElementById('connection-error').textContent=error.message; }
   finally { busy=false;button.disabled=false;button.textContent='Sign in and load data'; }
 }
@@ -129,52 +128,14 @@ async function refreshData() {
   finally{busy=false;document.getElementById('refresh-data').disabled=false;}
 }
 function disconnect() {
-  sessionVersion++;if(client){client.token=null;client.user=null;}client=null;viewMode='astronaut';
-  document.getElementById('checkin-dialog').close();document.getElementById('operations-dialog')?.close();
+  sessionVersion++;if(client){client.token=null;client.user=null;}client=null;
+  document.getElementById('operations-dialog')?.close();
   commitSnapshot(demoSnapshot());document.getElementById('refresh-data').hidden=true;document.getElementById('return-demo').hidden=true;render();toast('Disconnected. Returned explicitly to the demo dataset.');
 }
-const dialog=document.getElementById('checkin-dialog'), form=document.getElementById('checkin-form');
-function logFields(kind) {
-  const input=(label,name,min,max,step='1')=>`<label>${label}<input name="${name}" type="number" min="${min}" ${max?'max="'+max+'"':''} step="${step}" required></label>`;
-  if(kind==='blood_pressure')return input('Systolic pressure (mmHg)','systolic',60,250)+input('Diastolic pressure (mmHg)','diastolic',30,150)+input('Pulse (bpm)','pulse',30,220);
-  if(kind==='mood')return '<label class="full-width">How are you feeling?<select name="level" required><option value="">Select mood</option>'+Object.entries(HealthData.moodLabels).map(([level,label])=>`<option value="${level}">${level} · ${label}</option>`).join('')+'</select></label>';
-  if(kind==='sleep')return '<label>Bedtime (local time)<input name="bedtime" type="datetime-local" required></label><label>Wake time (local time)<input name="wakeTime" type="datetime-local" required></label>'+input('Sleep quality (1–5)','quality',1,5);
-  return input('Bone density (g/cm²)','value',0.001,null,'0.001');
-}
-function openCheckin() {
-  if(viewMode==='ground'||dataState.source==='api-synthetic')return;
-  form.innerHTML=`<div class="panel-heading"><div><p class="eyebrow">APP HEALTH LOG</p><h2>Daily check-in</h2></div><button type="button" class="icon-button" id="close-checkin" aria-label="Close">✕</button></div><p class="form-description">Record a log for <strong>${escapeHTML(selected.name)}</strong>. Each type is saved independently, matching the app.</p><label class="task-label">Log type<select id="log-kind" name="kind"><option value="blood_pressure">Blood pressure + pulse</option><option value="sleep">Sleep</option><option value="mood">Mood</option><option value="bone_density">Bone density · weekly</option></select></label><div class="form-grid" id="log-fields">${logFields('blood_pressure')}</div><p class="storage-note">${dataState.source==='demo'?'Demo only: fictional logs are saved in this browser.':'Saved to your authenticated app profile. Do not resubmit after a timeout until you refresh.'} Glucose and body temperature are not writable in the app schema.</p><p id="form-error" role="alert"></p><button class="button primary" id="save-log">Save log</button>`;
-  document.getElementById('close-checkin').addEventListener('click',()=>dialog.close());
-  document.getElementById('log-kind').addEventListener('change',e=>{document.getElementById('log-fields').innerHTML=logFields(e.target.value);document.getElementById('form-error').textContent='';});
-  dialog.showModal();
-}
-form.addEventListener('submit',async event=>{
-  event.preventDefault();if(busy||viewMode==='ground'||dataState.source==='api-synthetic')return;
-  const values=Object.fromEntries(new FormData(form));let payload;
-  try{payload=HealthData.buildLog(values.kind,values);}catch(error){document.getElementById('form-error').textContent=error.message;return;}
-  const version=sessionVersion,personId=selected.id;busy=true;document.getElementById('save-log').disabled=true;
-  try {
-    if(client){
-      await client.saveLog(payload);
-      try{const snapshot=await client.loadApp();if(version===sessionVersion)commitSnapshot(snapshot);}
-      catch(error){if(version===sessionVersion){dialog.close();toast('Log saved, but refresh failed. Do not submit again. '+error.message);document.getElementById('connection-status').textContent='Log saved · refresh required';}return;}
-    } else {
-      const data=structuredClone(payload.data);
-      if(payload.type==='sleep')data.durationMin=Math.round((Date.parse(data.wakeTime)-Date.parse(data.bedtime))/60000);
-      if(payload.type==='mood')data.label=HealthData.moodLabels[data.level].toLowerCase();
-      const log={id:'demo-'+crypto.randomUUID(),astronautId:personId,type:payload.type,timestamp:new Date().toISOString(),missionDay:dataState.mission.today,environmentId:null,note:null,coinsEarned:10,data,provenance:'USER_REPORTED'};
-      const next=[...localLogs,log];localStorage.setItem(demoStorageKey,JSON.stringify(next));localLogs=next;commitSnapshot(demoSnapshot());
-    }
-    if(version===sessionVersion){dialog.close();render();toast('App log saved successfully.');}
-  } catch(error) {if(version===sessionVersion)document.getElementById('form-error').textContent=error.message;}
-  finally {busy=false;const button=document.getElementById('save-log');if(button)button.disabled=false;}
-});
-document.getElementById('open-checkin').addEventListener('click',openCheckin);
 document.getElementById('connect-api').addEventListener('click',openConnection);
 document.getElementById('refresh-data').addEventListener('click',refreshData);
 document.getElementById('return-demo').addEventListener('click',()=>{if(!busy)disconnect();});
-document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>{period=Number(b.dataset.period);document.querySelectorAll('[data-period]').forEach(p=>p.classList.toggle('selected',p===b));if(viewMode!=='ground')renderChart();}));
-document.querySelectorAll('.nav-item').forEach(a=>a.addEventListener('click',()=>document.querySelectorAll('.nav-item').forEach(item=>item.classList.toggle('active',item===a))));
+document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>{period=Number(b.dataset.period);document.querySelectorAll('[data-period]').forEach(p=>p.classList.toggle('selected',p===b));renderChart();}));
 document.getElementById('notifications').addEventListener('click',()=>toast('Source: '+(dataState.source==='demo'?'upstream demo snapshot':'authenticated API')+'. See the crew overview for general status.'));
 // Capture validation events so dynamic forms also use English browser messages.
 document.addEventListener('input', event => { if (event.target.setCustomValidity) event.target.setCustomValidity(''); });

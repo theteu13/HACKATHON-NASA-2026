@@ -71,37 +71,6 @@
       destination: 'Synthetic mission', goals: {}, environments: [] } : m;
   }
   const moodLabels = { 1: 'Stressed', 2: 'Tired', 3: 'Okay', 4: 'Good', 5: 'Great' };
-  function buildLog(kind, values) {
-    const n = key => { const v = values[key]; if (v === '' || v == null || !Number.isFinite(Number(v))) throw new Error('Complete all required fields.'); return Number(v); };
-    if (kind === 'blood_pressure') {
-      const systolic = n('systolic'), diastolic = n('diastolic'), pulse = n('pulse');
-      if (systolic < 60 || systolic > 250 || diastolic < 30 || diastolic > 150 || systolic <= diastolic || pulse < 30 || pulse > 220) throw new Error('Blood pressure or pulse is outside the API input range.');
-      return { type: 'measurement', data: { metric: 'blood_pressure', values: { systolic, diastolic, pulse } } };
-    }
-    if (kind === 'mood') {
-      const level = n('level'); if (!Number.isInteger(level) || level < 1 || level > 5) throw new Error('Choose a mood from 1 to 5.');
-      return { type: 'mood', data: { level, tags: [] } };
-    }
-    if (kind === 'sleep') {
-      const bedtime = new Date(values.bedtime), wake = new Date(values.wakeTime), minutes = (wake - bedtime) / 60000, quality = n('quality');
-      if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 960 || !Number.isInteger(quality) || quality < 1 || quality > 5) throw new Error('Sleep must end after bedtime, last at most 16 hours, and have a quality from 1 to 5.');
-      return { type: 'sleep', data: { bedtime: bedtime.toISOString(), wakeTime: wake.toISOString(), quality, source: 'manual', wakeUps: 'none' } };
-    }
-    if (kind === 'bone_density') { const value = n('value'); if (value <= 0) throw new Error('Bone density must be positive.'); return { type: 'measurement', data: { metric: 'bone_density', values: { value, unit: 'g/cm²' } } }; }
-    throw new Error('Unsupported log type.');
-  }
-  function validDemoLog(log) {
-    if (!log || typeof log.id !== 'string' || typeof log.astronautId !== 'string' || !Number.isInteger(log.missionDay) || log.missionDay < 1 || !Number.isFinite(Date.parse(log.timestamp))) return false;
-    try {
-      const d = log.data;
-      if (log.type === 'measurement' && d.metric === 'blood_pressure') buildLog('blood_pressure', { ...d.values, pulse: d.values.pulse });
-      else if (log.type === 'measurement' && d.metric === 'bone_density') buildLog('bone_density', d.values);
-      else if (log.type === 'sleep') { buildLog('sleep', d); if (number(d.durationMin) === null) return false; }
-      else if (log.type === 'mood') buildLog('mood', d);
-      else return false;
-      return true;
-    } catch { return false; }
-  }
   class Client {
     constructor(baseUrl, fetcher = global.fetch?.bind(global)) {
       const u = new URL(baseUrl);
@@ -110,6 +79,7 @@
       this.baseUrl = u.origin; this.fetcher = fetcher; this.token = null; this.user = null;
     }
     async request(path, { method = 'GET', body } = {}) {
+      if (method !== 'GET' && !(method === 'POST' && path === '/api/v1/auth/login')) throw new Error('This dashboard is read-only.');
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
       try {
         const response = await this.fetcher(this.baseUrl + path, { method, signal: controller.signal, cache: 'no-store', credentials: 'omit',
@@ -124,7 +94,7 @@
         }
         return result;
       } catch (error) {
-        if (error.name === 'AbortError') throw new Error('The API request timed out. A write may have succeeded; refresh before submitting again.');
+        if (error.name === 'AbortError') throw new Error('The API request timed out. Please try refreshing the data.');
         if (error instanceof TypeError) throw new Error('Unable to reach the API. Check its address, HTTPS, and CORS configuration.');
         throw error;
       } finally { clearTimeout(timer); }
@@ -134,40 +104,46 @@
       this.token = response.accessToken;
       if (!this.token) throw new Error('The API did not return accessToken.');
       this.user = await this.request('/api/v1/auth/me');
-      if (!['astronaut', 'medical', 'admin'].includes(this.user.role)) throw new Error('Unsupported account role.');
+      if (!['medical', 'admin'].includes(this.user.role)) { this.token = null; this.user = null; throw new Error('This dashboard is for the care team only. Sign in with a medical or admin account.'); }
       // Refresh tokens and passwords are never persisted by the dashboard.
       return this.user;
     }
+    requireCareTeam() {
+      if (!this.user || !['medical','admin'].includes(this.user.role)) throw new Error('Care-team access is required.');
+    }
     async loadApp() {
-      if (this.user.role === 'astronaut') {
-        const [profile, status, logs, summaries] = await Promise.all([
-          this.request('/api/v1/app/me/profile'), this.request('/api/v1/app/me/status'),
-          this.request('/api/v1/app/me/logs?limit=1000'), this.request('/api/v1/app/me/summaries')
-        ]);
-        return { mission: profile.mission, crew: [appPerson(profile, logs, status, profile.mission.today)], summaries, environments: [], source: 'api-app' };
-      }
+      this.requireCareTeam();
       const [team, env] = await Promise.all([this.request('/api/v1/app/ground/crew'), this.request('/api/v1/app/ground/environment')]);
-      return { mission: team.mission, crew: team.crew.map(appGroundPerson), summaries: [], environments: env.latest, source: 'api-app' };
+      const crew = await Promise.all(team.crew.map(async row => {
+        const safe = appGroundPerson(row);
+        const path = '/api/v1/app/ground/astronauts/' + encodeURIComponent(safe.id) + '/logs?type=';
+        const groups = await Promise.all(['measurement','sleep','meal'].map(type => this.request(path + type)));
+        const allowed = groups.flat().filter(l => ['measurement','sleep','meal'].includes(l.type));
+        const person = appPerson({id:safe.id,name:safe.name,crewId:safe.crewId},allowed,safe.summary,team.missionDay);
+        person.metrics.mood = {value:null,unit:'/5',private:true};
+        return person;
+      }));
+      return { mission: team.mission, crew, summaries: [], environments: env.latest, source: 'api-app' };
     }
     async loadSynthetic(missionId) {
+      this.requireCareTeam();
       const missions = await this.request('/api/v1/missions');
       const mission = missionId ? missions.find(m => m.id === missionId) : missions[0];
       if (!mission) throw new Error('No matching synthetic mission is available.');
       const path = '/api/v1/missions/' + encodeURIComponent(mission.id);
-      if (this.user.role !== 'astronaut') {
-        const data = await this.request(path + '/dashboard');
-        return { mission: { ...normalizeMission(mission, true), today: data.missionDay }, crew: data.crew.map(syntheticGroundPerson), summaries: [], environments: [], source: 'api-synthetic' };
-      }
-      const astronauts = await this.request(path + '/astronauts');
-      const person = astronauts.find(a => a.id.toUpperCase() === this.user.astronautId?.toUpperCase());
-      if (!person) throw new Error('This account is not linked to this synthetic mission. App and synthetic astronaut IDs are separate.');
-      const personal = path + '/astronauts/' + encodeURIComponent(person.id);
-      const [today, daily] = await Promise.all([this.request(personal + '/today'), this.request(personal + '/daily?fromDay=1')]);
-      return { mission: { ...normalizeMission(mission, true), today: today.missionDay }, crew: [syntheticPerson(person, daily, today)], summaries: [], environments: [], source: 'api-synthetic' };
+      const data = await this.request(path + '/dashboard');
+      const crew = await Promise.all(data.crew.map(async row => {
+        const daily = await this.request(path + '/astronauts/' + encodeURIComponent(row.astronaut.id) + '/daily?fromDay=1');
+        const person = syntheticPerson(row.astronaut,daily,{status:row.status});
+        person.summary.activeAlerts = row.activeEpisodes || 0;
+        person.metrics.mood = {value:null,unit:'/5',private:true};
+        return person;
+      }));
+      return { mission:{...normalizeMission(mission,true),today:data.missionDay},crew,summaries:[],environments:[],source:'api-synthetic' };
     }
-    async saveLog(payload) { return this.request('/api/v1/app/me/logs', { method: 'POST', body: payload }); }
   }
-  const api = { metric, blankMetrics, appPerson, appGroundPerson, syntheticPerson, syntheticGroundPerson, normalizeMission, moodLabels, buildLog, validDemoLog, Client };
+
+  const api = { metric, blankMetrics, appPerson, appGroundPerson, syntheticPerson, syntheticGroundPerson, normalizeMission, moodLabels, Client };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.HealthData = api;
 })(typeof window !== 'undefined' ? window : globalThis);

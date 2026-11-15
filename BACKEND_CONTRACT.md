@@ -36,33 +36,26 @@ All authenticated requests use `Authorization: Bearer <accessToken>`. JSON field
 | Action | Endpoint |
 | --- | --- |
 | Sign in using username/password (Crew ID/PIN also works) | `POST /api/v1/auth/login` |
-| Resolve current role and astronaut ID | `GET /api/v1/auth/me` |
-| App personal profile and mission | `GET /api/v1/app/me/profile` |
-| App server-derived summary | `GET /api/v1/app/me/status` |
-| App personal history | `GET /api/v1/app/me/logs?limit=1000` |
-| App daily summaries | `GET /api/v1/app/me/summaries` |
-| Save one typed app log | `POST /api/v1/app/me/logs` |
+| Require medical/admin role | `GET /api/v1/auth/me` |
 | Ground crew overview | `GET /api/v1/app/ground/crew` |
 | Ground habitat readings | `GET /api/v1/app/ground/environment` |
 | List synthetic missions | `GET /api/v1/missions` |
-| Synthetic astronaut directory | `GET /api/v1/missions/{missionId}/astronauts` |
-| Personal synthetic snapshot | `GET /api/v1/missions/{missionId}/astronauts/{astronautId}/today` |
-| Personal synthetic daily history | `GET /api/v1/missions/{missionId}/astronauts/{astronautId}/daily?fromDay=1` |
+| Read synthetic daily history for the care team | `GET /api/v1/missions/{missionId}/astronauts/{astronautId}/daily?fromDay=1` |
 | Ground synthetic overview | `GET /api/v1/missions/{missionId}/dashboard` |
 
 The dashboard does not connect directly to SQLite/PostgreSQL. Database passwords belong to the API, never to frontend configuration.
 
-## Saving logs
+## Read-only monitoring
 
-One submission saves one record. The UI currently supports blood pressure/pulse, sleep, mood, and bone density. Sleep timestamps are entered in local time and serialized to UTC; the server derives duration. Pulse is constrained to 30–220; systolic to 60–250; diastolic to 30–150, with systolic greater than diastolic. These are API validation bounds, not clinical recommendations. Mood/quality are integers from 1 to 5. Sleep intervals must be positive and at most 16 hours.
+The dashboard does not create or modify health records. There are no check-in forms, health-data submission methods, or browser-local record storage. Authentication is the only allowed POST request; data loading uses GET.
 
-There is no multi-log transaction or idempotency key in the inspected API. Writes are never automatically retried. If the save succeeds but refresh fails, the UI reports that distinction. Following a timeout, refresh before resubmitting.
+For each crew member the app source reads measurement, sleep, and meal logs from `GET /api/v1/app/ground/astronauts/{astronautId}/logs?type=...`. Mood, journal, injury descriptions, and private messages are not requested as individual logs. The UI labels mood private and leaves its value empty. Synthetic records supply physical metrics and heart-rate history; mood is discarded in the projection.
 
-The backend's `/me/logs` endpoint is limited to the newest 1,000 logs, without cursor pagination. Personal app charts reflect that fetched window, not a guaranteed complete lifetime archive. The synthetic personal history covers the selected mission's flight days.
+The ground summary remains visible above an expandable read-only section for the selected crew member. Cabin controls and scenario plans are local simulations; neither sends commands to the API.
 
 ## Roles and privacy
 
-Live mode follows `/auth/me`: `astronaut` sees its own data; `medical` and `admin` see Ground Control. The live role switch cannot elevate access, and ground loading does not request personal log/status endpoints.
+Live access requires medical or admin from `/auth/me`. Astronaut accounts are rejected before any crew data is loaded. There is no role switch or astronaut interface. Read endpoints remain protected by backend authorization.
 
 **Backend limitation:** `/app/ground/crew` currently returns mood and a latest alert containing text/evidence; the synthetic ground overview includes raw per-person values. The frontend discards these fields in its ground projection. This does not remove them from the network response. Meeting the intended privacy policy requires server-side response filtering and an explicit policy for operational versus clinical roles. See [ground router](https://github.com/lzphellipe/nasa-space-software-health-crew/blob/7c7de46f2b2f21360f4a9fd027ad4c298522b618/app/routers/app_ground.py).
 
@@ -76,6 +69,6 @@ Cabin readings are read-only. Light/noise/temperature controls and rest planning
 
 ## Verification
 
-Validated with a fresh local instance of the upstream FastAPI application and an isolated generated SQLite database: app and synthetic logins; four typed log writes and subsequent reads; app and synthetic ground views; habitat readings; astronaut-to-ground denial (403); incompatible ID rejection. No upstream code, hosted database, or GitHub branch was changed.
+Validated with a local upstream FastAPI instance and an isolated SQLite database: medical-account login, app/synthetic crew reads, received physical logs, private-mood exclusion, and rejection of astronaut accounts. No upstream code, hosted database, or GitHub branch was changed.
 
 Unit and DOM-simulation tests are in `tests/health-data.test.cjs` and `tests/command.test.cjs`. Real browser visual verification remains pending because the browser access host was unavailable.

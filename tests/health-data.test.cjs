@@ -22,16 +22,17 @@ test('synthetic columns retain distinct units and sparse measurement dates',()=>
   assert.equal(p.metrics.bone.value,1.1);assert.equal(p.metrics.bone.missionDay,4);
   assert.equal(p.metrics.glucose.value,95);assert.equal(p.metrics.glucose.unsupported,undefined);assert.equal(p.metrics.immune.value,null);
 });
-test('log payloads use actual API types and enforce input constraints',()=>{
-  assert.equal(JSON.stringify(H.buildLog('blood_pressure',{systolic:118,diastolic:76,pulse:63})),JSON.stringify({type:'measurement',data:{metric:'blood_pressure',values:{systolic:118,diastolic:76,pulse:63}}}));
-  assert.throws(()=>H.buildLog('blood_pressure',{systolic:50,diastolic:90,pulse:63}));
-  assert.throws(()=>H.buildLog('mood',{level:1.5}));
-  assert.throws(()=>H.buildLog('sleep',{bedtime:'2026-11-14T00:00:00Z',wakeTime:'2026-11-15T00:00:00Z',quality:3}));
-  assert.equal(H.buildLog('sleep',{bedtime:'2026-11-14T00:00:00Z',wakeTime:'2026-11-14T07:00:00Z',quality:3}).data.source,'manual');
+test('API client rejects astronaut accounts before loading crew data',async()=>{
+  const paths=[];
+  const c=new H.Client('http://127.0.0.1:8000',async url=>{paths.push(url);return {ok:true,status:200,json:async()=>url.endsWith('/login')?{accessToken:'test-token'}:{role:'astronaut'}};});
+  await assert.rejects(()=>c.login('astronaut','test'),/care team only/);
+  assert.equal(c.token,null);assert.equal(c.user,null);assert.equal(paths.length,2);
+  await assert.rejects(()=>c.loadApp(),/Care-team access/);
 });
-test('API client does not retry failed writes and rejects unsafe origins',async()=>{
+test('API client blocks health-data writes and rejects unsafe origins',async()=>{
   assert.throws(()=>new H.Client('http://example.com'));assert.throws(()=>new H.Client('https://user:secret@example.com'));assert.throws(()=>new H.Client('https://example.com/api'));
   let calls=0;
-  const c=new H.Client('http://127.0.0.1:8000',async(url,options)=>{calls++;assert.equal(options.method,'POST');return {ok:false,status:422,json:async()=>({detail:[{msg:'invalid field'}]})};});
-  await assert.rejects(()=>c.saveLog({}),/invalid field/);assert.equal(calls,1);
+  const c=new H.Client('http://127.0.0.1:8000',async()=>{calls++;});
+  await assert.rejects(()=>c.request('/api/v1/app/me/logs',{method:'POST',body:{}}),/read-only/);
+  assert.equal(calls,0);assert.equal(typeof c.saveLog,'undefined');
 });
