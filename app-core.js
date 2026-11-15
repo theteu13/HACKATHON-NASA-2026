@@ -24,7 +24,7 @@ function toast(message) { clearTimeout(toastTimer); const el = document.getEleme
 function provenanceLabel(value) { return ({ SIMULATED_TELEMETRY: 'Simulated telemetry', USER_REPORTED: 'User reported', RULE_DERIVED: 'Rule derived', REAL_RESEARCH_DATA: 'Research data' })[value] || 'No provenance'; }
 function renderCrew() {
   document.getElementById('crew-list').innerHTML = crew.map((c, i) => `<button class="crew-card ${c.id === selected.id ? 'selected' : ''}" data-crew="${escapeHTML(c.id)}" aria-pressed="${c.id === selected.id}"><span class="avatar ${i % 2 ? 'alternate' : ''}">${portrait({skin:'#d6a584',hair:'#332531'})}</span><span class="crew-info"><strong>${escapeHTML(c.name)}</strong><small>${escapeHTML(c.crewId || c.role)}</small></span><span class="crew-indicator">${c.id === selected.id ? 'Selected' : 'View'}</span></button>`).join('');
-  document.querySelectorAll('[data-crew]').forEach(button => button.addEventListener('click', () => { selected = crew.find(c => c.id === button.dataset.crew); render(); }));
+  document.querySelectorAll('[data-crew]').forEach(button => button.addEventListener('click', () => { if (typeof selectIndividualCrew === 'function') selectIndividualCrew(button.dataset.crew); else { selected = crew.find(c => c.id === button.dataset.crew); render(); } }));
 }
 function metricNote(m) {
   if (m.private) return 'Private information - not shared';
@@ -90,10 +90,11 @@ function updateMissionUI() {
 }
 function render() {
   renderCrew(); updateMissionUI();
-  renderMetrics();renderChart();renderAdditional();renderRecords();
+  renderMetrics();renderChart();renderAdditional();renderRecords();renderBodyCallouts();
   document.getElementById('astronaut-title').textContent = `Health overview: ${selected.name}`;
   document.getElementById('astronaut-subtitle').textContent = `${selected.crewId || selected.role} · ${provenanceLabel(selected.provenance)}`;
   if (typeof renderCommand === 'function') renderCommand();
+  if (typeof renderTeamView === 'function') renderTeamView();
 }
 const connectionBar = document.createElement('section'); connectionBar.className = 'connection-bar';
 connectionBar.innerHTML = '<span id="connection-status" role="status"></span><div><button class="text-button" id="connect-api">Connect API</button><button class="text-button" id="refresh-data" hidden>Refresh</button><button class="text-button" id="return-demo" hidden>Disconnect</button></div>';

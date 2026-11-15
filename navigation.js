@@ -43,7 +43,10 @@
   function navigate(link, changeHash = true) {
     const entry = targets.find(item => item.link === link);
     if (!entry?.target) return;
-    if (details.contains(entry.target)) details.open = true;
+    if (details.contains(entry.target)) {
+      setMonitoringScope('individual');
+      details.open = true;
+    }
     activate(link);
     if (changeHash) window.history.replaceState(null, '', link.getAttribute('href'));
     entry.target.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });

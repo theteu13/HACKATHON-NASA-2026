@@ -1,0 +1,53 @@
+/* Give the connected avatar room to breathe, with numeric cards below it. */
+.dashboard-grid{grid-template-columns:1fr}
+.body-panel{display:block;padding:24px 28px 0;background:radial-gradient(ellipse at 50% 45%,#28215080,transparent 60%),#14132f}
+.body-panel .panel-heading h3{font-size:14px}
+.body-panel .panel-description{font-size:11px;line-height:1.6}
+.body-panel .body-visual{height:440px;max-width:1000px;margin:23px auto 0;position:relative;isolation:isolate}
+.body-panel .astronaut-svg{height:100%;width:38%;left:50%;top:0;transform:translateX(-50%);z-index:1;pointer-events:none}
+.body-panel .body-orbit{inset:9% 31% 7%;border-color:#887cff13;pointer-events:none}
+.body-connectors{position:absolute;inset:0;width:100%;height:100%;z-index:2;overflow:visible;pointer-events:none}
+.connector{color:var(--lilac)}
+.connector polyline{fill:none;stroke:currentColor;stroke-width:1.5;opacity:.65;vector-effect:non-scaling-stroke}
+.connector circle{fill:currentColor;stroke:none}
+.connector .connector-halo{opacity:.15}
+.tone-recorded{--callout-color:var(--lilac)}
+.tone-normal{--callout-color:var(--teal)}
+.tone-watch{--callout-color:var(--gold)}
+.tone-alert{--callout-color:var(--danger)}
+.tone-empty{--callout-color:var(--muted)}
+.connector{color:var(--callout-color)}
+.connector.tone-empty{opacity:.25}
+.connector.tone-empty polyline{stroke-dasharray:4 5}
+.body-callouts{position:absolute;inset:0;z-index:3}
+.body-callout{position:absolute;width:28%;height:20%;padding:13px 16px;border:1px solid color-mix(in srgb,var(--callout-color) 48%,transparent);border-radius:14px;background:linear-gradient(125deg,#211d4cf5,#161431f5);box-shadow:inset 0 0 18px color-mix(in srgb,var(--callout-color) 4%,transparent)}
+.callout-left{left:0}.callout-right{right:0}
+.callout-row-0{top:3%}.callout-row-1{top:27%}.callout-row-2{top:51%}.callout-row-3{top:75%}
+.body-callout h4{display:flex;align-items:center;gap:6px;margin:0;font:500 10px var(--font-body);color:var(--muted)}
+.body-callout h4 svg{width:13px;height:13px;color:var(--callout-color);flex-shrink:0}
+.callout-status{width:4px;height:4px;border-radius:50%;background:var(--callout-color);margin-left:auto;flex-shrink:0}
+.callout-value{margin-top:9px;font:500 19px var(--font-heading);letter-spacing:-.5px;white-space:nowrap}
+.callout-value small{margin-left:5px;color:var(--muted);font:400 9px var(--font-body);letter-spacing:0}
+.body-callout p{margin:6px 0 0;color:var(--muted);font-size:8px;line-height:1.4}
+.body-callout.tone-empty{border-color:var(--line);background:#161431d9}
+.body-callout.tone-empty .callout-value{color:var(--muted)}
+.body-panel .body-legend{font-size:9px;gap:18px;padding:5px 0 20px;flex-wrap:wrap}
+.body-panel .body-footnote{font-size:9px;line-height:1.6;align-items:center;flex-wrap:wrap;gap:8px;padding:13px 0}
+.body-panel .body-footnote svg{width:13px;height:13px;flex-shrink:0}
+.body-avatar-caption{text-align:center;color:var(--muted);font-size:10px;margin:2px 0 15px}
+@media(max-width:1200px){.body-callout{padding:12px}.callout-value{font-size:18px}.body-panel{padding-left:20px;padding-right:20px}}
+@media(max-width:720px){.body-panel{display:block}.body-panel .body-visual{height:420px}.body-callout{padding:11px 9px}.body-callout h4{font-size:9px;gap:4px}.body-callout h4 svg{width:11px;height:11px}.callout-value{font-size:16px}.callout-value small{font-size:8px}.body-callout p{font-size:7px}.callout-status{display:none}}
+@media(max-width:520px){
+  .body-panel{padding:18px 14px 0}
+  .body-panel .body-visual{height:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .body-panel .astronaut-svg{position:relative;grid-column:1/-1;width:190px;height:280px;left:auto;top:auto;transform:none;justify-self:center;grid-row:1}
+  .body-panel .body-orbit,.body-connectors{display:none}
+  .body-callouts{display:contents}
+  .body-callout{position:static;width:100%;height:auto;min-height:96px;padding:12px;align-self:stretch}
+  .body-callout h4{font-size:9px;line-height:1.4}
+  .callout-value{font-size:18px;white-space:normal}
+  .callout-value small{display:inline-block}
+  .body-callout p{font-size:8px}
+  .body-avatar-caption{margin-top:15px;font-size:9px}
+  .body-panel .body-legend{padding-top:8px;font-size:8px;gap:12px}
+}
