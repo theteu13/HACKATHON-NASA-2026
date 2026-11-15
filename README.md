@@ -41,7 +41,7 @@ There is no astronaut mode, personal copilot, family-message panel, or health-da
 With Node.js available:
 
 ```powershell
-node --test tests/health-data.test.cjs tests/command.test.cjs tests/crew-aggregate.test.cjs
+node --test tests/health-data.test.cjs tests/command.test.cjs tests/crew-aggregate.test.cjs tests/avatar-behavior.test.cjs tests/avatar-needs.test.cjs
 ```
 
 Tests cover mappings, missing data, timestamps, privacy projections, role selection, read-only enforcement, rejected astronaut accounts, HTML escaping, and the simulator. Also verified against a fresh local upstream API with an isolated SQLite database: medical-account access to app and synthetic data, physical record reads, and rejected astronaut accounts. Browser visual review remains pending because the browser host was unavailable.
@@ -53,3 +53,15 @@ See [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md) for the exact mappings, endpoints
 Team overview opens with status counts and a conceptual crew avatar. Its eight callouts show means for the current mission day, with contributing crew counts (for example, 3/4). Pressure means use the same complete systolic/diastolic pairs. Missing, older, future, unsupported, and private values do not enter the mean. No psychological mean is computed.
 
 Callout colors preserve individual metric flags, including older measurements, and the follow-up list keeps those crew members visible. If a metric has no per-metric source status, the interface does not invent clinical thresholds. The comparison table is expandable and displays latest individual readings with their measurement days. Select View details to open the individual avatar.
+
+## Source-linked avatar behavior
+
+Both avatars have routine, watch, review, and limited-data states. Movements follow existing general/metric source flags, including older flags; no numeric threshold or diagnosis is introduced. The collective avatar uses the highest-priority crew flag, never the average. Missing current-day coverage keeps the avatar neutral when there are no source flags. Psychological values are excluded.
+
+Pause motion applies to both avatars and persists while switching views or refreshing data during the session. The browser reduced-motion preference disables animation. All motion uses CSS and existing SVG groups; no new requests, timers, or raster assets are required. Status labels remain visible when motion is paused or reduced. Actual visual animation review remains pending because browser access is unavailable in this environment.
+
+## Avatar review prompts
+
+A clickable speech bubble highlights the highest-priority pending review. The individual view identifies that crew member; the collective view counts affected crew and lists prompts with a link to individual details. Prompts are recomputed on data refresh and disappear when their source conditions resolve.
+
+Prompts cover existing care-team source flags, same-day sleep below an explicit mission goal, incomplete recorded intake relative to the mission calorie goal, and missing supported daily readings. Nutrition prompts are informational because the day or meal logs may be incomplete. Missing records are not medical findings, and these prompts do not establish hunger, prescribe rest, or infer a treatment. No hydration or medication need is invented without supporting data. The dashboard remains read-only.

@@ -96,6 +96,8 @@ function render() {
   document.getElementById('astronaut-subtitle').textContent = `${selected.crewId || selected.role} · ${provenanceLabel(selected.provenance)}`;
   if (typeof renderCommand === 'function') renderCommand();
   if (typeof renderTeamView === 'function') renderTeamView();
+  if (typeof applyAvatarBehaviors === 'function') applyAvatarBehaviors();
+  if (typeof applyAvatarNeeds === 'function') applyAvatarNeeds();
 }
 const connectionBar = document.createElement('section'); connectionBar.className = 'connection-bar';
 connectionBar.innerHTML = '<span id="connection-status" role="status"></span><div><button class="text-button" id="connect-api">Connect API</button><button class="text-button" id="refresh-data" hidden>Refresh</button><button class="text-button" id="return-demo" hidden>Disconnect</button></div>';

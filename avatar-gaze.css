@@ -1,0 +1,18 @@
+.avatar-gaze{transform-box:view-box;transform-origin:130px 105px;transform:translate(var(--gaze-x,0px),var(--gaze-y,0px)) rotate(var(--gaze-angle,0deg))}
+.avatar-pupils{transform:translate(var(--eye-x,0px),var(--eye-y,0px))}
+.avatar-eye-display{transform-box:view-box;transform-origin:130px 98px;animation:avatar-blink 8s ease-in-out infinite}
+.avatar-eye-frame{fill:#ccfff5}
+.avatar-pupil{fill:#16132f}
+.avatar-eye-glint{fill:#fff;opacity:.9}
+.avatar-expression{fill:none;stroke:#b5fff0;stroke-width:1.7;stroke-linecap:round;opacity:.75}
+.body-visual[data-avatar-state=watch] .avatar-eye-frame{fill:#ffe7a5}
+.body-visual[data-avatar-state=review] .avatar-eye-frame{fill:#ffc5d1}
+.body-visual[data-avatar-state=review] .avatar-expression{opacity:.3}
+.body-visual[data-avatar-state=unknown] .avatar-eye-frame{fill:#c5bfff}
+.body-callout[data-avatar-observed=true]{border-color:var(--callout-color);box-shadow:0 0 0 1px color-mix(in srgb,var(--callout-color) 25%,transparent),0 0 20px color-mix(in srgb,var(--callout-color) 9%,transparent)}
+.body-visual[data-motion=paused] .avatar-eye-display{animation-play-state:paused}
+@keyframes avatar-blink{0%,93%,97%,100%{transform:scaleY(1)}95%{transform:scaleY(.12)}}
+@media(prefers-reduced-motion:reduce){
+  .avatar-gaze,.avatar-pupils{transform:none}
+  .avatar-eye-display{animation:none}
+}

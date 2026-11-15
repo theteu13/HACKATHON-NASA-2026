@@ -1,0 +1,48 @@
+// Animation reflects source status, never an inferred diagnosis or a mean threshold.
+(function(global) {
+  function describe(people, missionDay) {
+    let review=0, watch=0, missing=0;
+    for(const person of people) {
+      const summary=person.summary||{}, metrics=Object.entries(person.metrics||{}).filter(([key,m])=>key!=='mood'&&!m.private);
+      const flags=metrics.filter(([,m])=>typeof m.value==='number'&&Number.isFinite(m.value)&&m.missionDay<=missionDay);
+      const areas=Object.values(summary.areas||{});
+      const severe=summary.status==='out_of_range'||summary.alertLevel==='high'||areas.includes('alert')||flags.some(([,m])=>m.status==='out_of_range');
+      const attention=summary.status==='watch'||summary.alertLevel==='medium'||areas.includes('warn')||flags.some(([,m])=>m.status==='watch');
+      const hasCurrent=flags.some(([,m])=>m.missionDay===missionDay);
+      if(severe)review++;
+      else if(attention)watch++;
+      else if(!hasCurrent||summary.status==='no_data')missing++;
+    }
+    const state=review?'review':watch?'watch':missing||!people.length?'unknown':'routine';
+    const label={routine:'Routine monitoring',watch:'Follow-up suggested',review:'Review required',unknown:'Limited current-day data'}[state];
+    const count=review||watch;
+    const detail=count?`${count}/${people.length} crew with ${review?'review':'watch'} flags`:missing?`${missing}/${people.length} crew without current-day coverage`:`${people.length} crew monitored`;
+    return {state,label,detail,review,watch,missing,total:people.length};
+  }
+  if(typeof module!=='undefined'&&module.exports){module.exports={describe};return;}
+  global.CosmoAvatar={describe};
+  const motionPreference=global.matchMedia?.('(prefers-reduced-motion: reduce)');
+  let paused=false;
+  global.applyAvatarBehaviors=function() {
+    global.resetAvatarGaze?.();
+    const reduced=!!motionPreference?.matches;
+    const groups=[['individual',[selected]],['team',crew]];
+    for(const [scope,people] of groups) {
+      const visual=document.getElementById(scope+'-body-visual');
+      if(!visual)continue;
+      const description=describe(people,dataState.mission.today);
+      visual.dataset.avatarState=description.state;
+      visual.dataset.motion=paused||reduced?'paused':'running';
+      const badge=document.getElementById(scope+'-avatar-state');
+      if(badge){badge.dataset.state=description.state;badge.textContent=description.label;badge.title=description.detail+' · Follows source flags, including older readings. Not a diagnosis.';}
+      const button=document.getElementById(scope+'-avatar-motion');
+      if(button){
+        button.disabled=reduced;
+        button.setAttribute('aria-pressed',String(paused||reduced));
+        button.textContent=reduced?'Reduced motion':paused?'Resume motion':'Pause motion';
+        if(!button.dataset.motionBound){button.addEventListener('click',()=>{paused=!paused;global.applyAvatarBehaviors();});button.dataset.motionBound='true';}
+      }
+    }
+  };
+  motionPreference?.addEventListener?.('change',()=>{if(typeof dataState!=='undefined')global.applyAvatarBehaviors();});
+})(typeof window!=='undefined'?window:globalThis);

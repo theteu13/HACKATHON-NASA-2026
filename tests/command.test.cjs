@@ -18,7 +18,7 @@ function setup(){
   const modes=['astronaut','ground'].map(mode=>{const e=get('mode-'+mode);e.dataset.mode=mode;return e});
   const sandbox=vm.createContext({document:{addEventListener(){},body:get('body'),getElementById:get,querySelector:get,querySelectorAll:s=>s==='[data-mode]'?modes:s==='.summary-detail strong'?[get('day-stat'),get('crew-stat'),get('update-stat')]:[],createElement:()=>get('created-'+elements.size)},localStorage:{getItem:()=>null},Intl,Date,URL,AbortController,setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},FormData:class{},structuredClone,console});
   sandbox.window=sandbox;
-  for(const file of ['data/demo-seed.js','health-data.js','crew-aggregate.js','app.js','body-callouts.js','app-core.js','command.js','team-view.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),sandbox,{filename:file});
+  for(const file of ['data/demo-seed.js','health-data.js','crew-aggregate.js','app.js','body-callouts.js','avatar-behavior.js','avatar-needs.js','avatar-gaze.js','app-core.js','command.js','team-view.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),sandbox,{filename:file});
   return {get,run:code=>vm.runInContext(code,sandbox)};
 }
 test('canonical demo profiles, mission, and unavailable metrics render',()=>{
