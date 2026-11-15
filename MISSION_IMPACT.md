@@ -43,10 +43,10 @@ Methodological context: [NIST paired observations](https://www.itl.nist.gov/div8
 
 ## Files and verification
 
-- `mission-impact.js`: pure calculation and physical-field filtering.
-- `impact-view.js` / `impact-view.css`: expandable UI, source and subject controls, trend chart, insights and comparison table.
+- `src/features/mission-impact/mission-impact.js`: pure calculation and physical-field filtering.
+- `src/features/mission-impact/impact-view.js` / `src/features/mission-impact/impact-view.css`: expandable UI, source and subject controls, trend chart, insights and comparison table.
 - `data/impact-example.js`: attributed offline synthetic example.
-- `health-data.js`: API daily-history and baseline-reference integration.
+- `src/services/health-data.js`: API daily-history and baseline-reference integration.
 - `tests/mission-impact.test.cjs`: pairing/weights, 30/180 boundaries, day-zero exclusion, missing observations, zero variance, slopes, privacy, temperature and duplicate-day behavior.
 
 Verified against the pinned local upstream FastAPI service using its isolated SQLite test database. All four heart-rate baselines matched the backend reference to its rounding precision, with 120 baseline and 720 mission observations. Monitoring remained flight-only and the app source remained explicitly non-comparable. Visual browser verification remains pending.

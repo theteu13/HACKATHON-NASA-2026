@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {describe}=require('../avatar-behavior.js');
+const {describe}=require('../src/features/avatar/avatar-behavior.js');
 function person(status='normal',value=65,day=12){return {summary:{status},metrics:{heart:{value,missionDay:day,unit:'bpm'},mood:{value:1,private:true,missionDay:12,status:'out_of_range'}}};}
 test('routine motion requires current physical readings and ignores private mood',()=>{
   assert.equal(describe([person()],12).state,'routine');

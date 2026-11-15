@@ -139,7 +139,7 @@
           this.request(personalPath + '/daily?fromDay=-30&toDay=' + data.missionDay),
           this.request(personalPath + '/baseline')
         ]);
-        const impactEngine=typeof module!=='undefined'&&module.exports?require('./mission-impact.js'):global.MissionImpact;
+        const impactEngine=typeof module!=='undefined'&&module.exports?require('../features/mission-impact/mission-impact.js'):global.MissionImpact;
         const physical=impactEngine.physicalRecords(allDays);
         analysisPeople.push({id:row.astronaut.id,name:row.astronaut.displayName,records:physical,
           baselineReference:{fromDay:baselineReference.fromDay,toDay:baselineReference.toDay,

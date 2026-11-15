@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const M=require('../mission-impact.js');
+const M=require('../src/features/mission-impact/mission-impact.js');
 const metric=M.indicators.find(m=>m.code==='heart_rate');
 function person(id,pre,post){return {id,name:id,records:[...pre.map(([day,value])=>({missionDay:day,values:{heart_rate:value}})),...post.map(([day,value])=>({missionDay:day,values:{heart_rate:value}}))]};}
 test('compares means, sample SD, percent change, personal deviation band and standardized shift',()=>{

@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const {gazeForPoint}=require('../avatar-gaze.js');
+const {gazeForPoint}=require('../src/features/avatar/avatar-gaze.js');
 test('gaze follows pointer direction relative to the visor and remains bounded',()=>{
   const rect={left:0,top:0,width:260,height:390};
   assert.equal(gazeForPoint(rect,130,91).eyeX,0);
@@ -30,7 +30,7 @@ test('pointer controller coalesces frames, returns to neutral, respects pause/to
   const card={dataset:{},closest:selector=>selector==='.body-callout'?card:stage};
   const browser={matchMedia:()=>preference,addEventListener:(name,fn)=>handlers['window-'+name]=fn,requestAnimationFrame:fn=>{const id=nextFrame++;frames.set(id,fn);return id},cancelAnimationFrame:id=>frames.delete(id)};
   const context=vm.createContext({window:browser,document:{hidden:false,addEventListener:(name,fn)=>handlers[name]=fn}});
-  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','avatar-gaze.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src/features/avatar/avatar-gaze.js'),'utf8'),context);
   function flush(){let ticks=0;while(frames.size){const [id,fn]=frames.entries().next().value;frames.delete(id);fn(time+=16);assert.ok(++ticks<200,'Animation must settle instead of running forever.');}}
   const event={target:card,pointerType:'mouse',clientX:500,clientY:250};
   handlers.pointermove(event);handlers.pointermove({...event,clientX:520});

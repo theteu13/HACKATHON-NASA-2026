@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const H=require('../health-data.js');
+const H=require('../src/services/health-data.js');
 const profile={id:'ast-01',name:'Test Crew',crewId:'ORB3-TEST'};
 function log(type,data,day=12,id='test'){return {id,astronautId:'ast-01',type,data,missionDay:day,timestamp:`2026-11-${String(day+2).padStart(2,'0')}T08:00:00Z`,provenance:'USER_REPORTED'};}
 test('app maps typed logs, keeps missing values null, and excludes other profiles',()=>{

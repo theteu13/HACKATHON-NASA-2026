@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
-const {chooseActiveRegion}=require('../navigation.js');
+const {chooseActiveRegion}=require('../src/features/navigation/navigation.js');
 test('individual avatar belongs to Crew even after the cabin tools have scrolled past',()=>{
   assert.equal(chooseActiveRegion([{owner:'#cabin-tools',top:-500,bottom:-400},{owner:'#crew',top:-100,bottom:850},{owner:'#records',top:900,bottom:1100}],800),'#crew');
 });
@@ -55,7 +55,7 @@ test('controller handles layout changes, interrupted smooth navigation and cabin
     getElementById:id=>id==='crew-health'?details:id==='operations-dialog'?operations:id==='open-cabin'?node('open-cabin',0,0):null,
     addEventListener:(type,fn)=>events['document:'+type]=fn};
   const context=vm.createContext({window:win,document:doc,setMonitoringScope(){details.open=true},openCabin(){operations.open=true}});
-  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','navigation.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','src/features/navigation/navigation.js'),'utf8'),context);
   function tick(){const entry=frames.entries().next().value;if(entry){frames.delete(entry[0]);entry[1](clock+=16);}}
   function active(){assert.equal(links.filter(l=>l.active).length,1);return links.find(l=>l.active).owner;}
   tick();assert.equal(active(),'#crew');

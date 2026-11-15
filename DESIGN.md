@@ -4,7 +4,7 @@ O dashboard e o app pertencem ao produto CosmoMedic. Nebula Glass identifica som
 
 ## Elementos compartilhados
 
-- `theme.css` centraliza a paleta exata das referências e os tokens para reutilização no app.
+- `src/styles/theme.css` centraliza a paleta exata das referências e os tokens para reutilização no app.
 - Sora nos títulos e Inter nos textos e campos.
 - Cartões com raio de 18 px; controles com 14 px e chips com 99 px.
 - Lilás para ações primárias e seleção de astronauta; turquesa para navegação ativa e estados concluídos.

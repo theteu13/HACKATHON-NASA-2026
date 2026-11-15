@@ -1,6 +1,6 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {derive,collect}=require('../avatar-needs.js');
+const {derive,collect}=require('../src/features/avatar/avatar-needs.js');
 const mission={today:12,goals:{sleepHours:7,kcalPerDay:2500}};
 function person(id='a'){
   return {id,name:id,summary:{status:'normal'},metrics:{systolic:{value:118,missionDay:12},diastolic:{value:76,missionDay:12},heart:{value:65,missionDay:12},sleep:{value:7,missionDay:12},nutrition:{value:2500,missionDay:12},glucose:{value:null,unsupported:true},temperature:{value:null,unsupported:true},mood:{value:1,private:true,status:'out_of_range',missionDay:12}}};

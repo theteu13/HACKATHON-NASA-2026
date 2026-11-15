@@ -1,28 +1,4 @@
 'use strict';
-const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const format = value => typeof value === 'number' && Number.isFinite(value) ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value) : '—';
-const seed = window.COSMOMEDIC_DEMO;
-let client = null, selected, crew = [], period = 7, sessionVersion = 0, busy = false, toastTimer;
-let dataState;
-function demoSnapshot() {
-  return { source: 'demo', mission: seed.mission, summaries: seed.dailySummaries, environments: seed.environmentReadings,
-    crew: seed.astronauts.map(a => {
-      const person = HealthData.appPerson(a, seed.logs.filter(l => ['measurement','sleep','meal'].includes(l.type)),
-        seed.dailySummaries.find(s => s.astronautId === a.id && s.missionDay === seed.mission.today) || {}, seed.mission.today);
-      person.metrics.mood = { value: null, unit: '/5', private: true };
-      return person;
-    }) };
-}
-function commitSnapshot(snapshot) {
-  const previousId = selected?.id;
-  snapshot.loadedAt = new Date().toISOString();
-  dataState = snapshot; crew = snapshot.crew; selected = crew.find(c => c.id === previousId) || crew[0];
-  if (!selected) throw new Error('No crew is available in this dataset.');
-}
-commitSnapshot(demoSnapshot());
-function current() { return selected; }
-function toast(message) { clearTimeout(toastTimer); const el = document.getElementById('toast'); el.textContent = message; el.hidden = false; toastTimer = setTimeout(() => el.hidden = true, 6500); }
-function provenanceLabel(value) { return ({ SIMULATED_TELEMETRY: 'Simulated telemetry', USER_REPORTED: 'User reported', RULE_DERIVED: 'Rule derived', REAL_RESEARCH_DATA: 'Research data' })[value] || 'No provenance'; }
 function renderCrew() {
   document.getElementById('crew-list').innerHTML = crew.map((c, i) => `<button class="crew-card ${c.id === selected.id ? 'selected' : ''}" data-crew="${escapeHTML(c.id)}" aria-pressed="${c.id === selected.id}"><span class="avatar ${i % 2 ? 'alternate' : ''}">${portrait({skin:'#d6a584',hair:'#332531'})}</span><span class="crew-info"><strong>${escapeHTML(c.name)}</strong><small>${escapeHTML(c.crewId || c.role)}</small></span><span class="crew-indicator">${c.id === selected.id ? 'Selected' : 'View'}</span></button>`).join('');
   document.querySelectorAll('[data-crew]').forEach(button => button.addEventListener('click', () => { if (typeof selectIndividualCrew === 'function') selectIndividualCrew(button.dataset.crew); else { selected = crew.find(c => c.id === button.dataset.crew); render(); } }));
@@ -100,56 +76,3 @@ function render() {
   if (typeof applyAvatarNeeds === 'function') applyAvatarNeeds();
   if (typeof renderImpactView === 'function') renderImpactView();
 }
-const connectionBar = document.createElement('section'); connectionBar.className = 'connection-bar';
-connectionBar.innerHTML = '<span id="connection-status" role="status"></span><div><button class="text-button" id="connect-api">Connect API</button><button class="text-button" id="refresh-data" hidden>Refresh</button><button class="text-button" id="return-demo" hidden>Disconnect</button></div>';
-document.querySelector('.mission-summary').before(connectionBar);
-const connectionDialog = document.createElement('dialog');connectionDialog.id='connection-dialog';document.body.append(connectionDialog);
-function openConnection() {
-  connectionDialog.innerHTML = `<form id="connection-form"><div class="panel-heading"><div><p class="eyebrow">COSMOMEDIC DATA</p><h2>Connect to the backend</h2></div><button type="button" class="icon-button" id="close-connection" aria-label="Close">✕</button></div><p class="form-description">Sign in with a medical or admin account to monitor the crew. Astronaut accounts cannot use this dashboard. Tokens stay in memory for this session.</p><label class="task-label">API origin<input name="origin" type="url" value="http://127.0.0.1:8000" placeholder="https://your-api.example" required></label><label class="task-label">Dataset<select name="dataset"><option value="app">CosmoMedic app · Orbit-3</option><option value="synthetic">Synthetic mission · all six vital signs</option></select></label><div class="form-grid"><label>Care-team username<input name="username" autocomplete="username" required maxlength="100"></label><label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label></div><p class="command-note">Read-only monitoring. HTTP is accepted only for localhost development.</p><p id="connection-error" role="alert"></p><button class="button primary" id="submit-connection">Sign in and load data</button></form>`;
-  document.getElementById('close-connection').addEventListener('click',()=>connectionDialog.close());
-  document.getElementById('connection-form').addEventListener('submit',connectAPI);
-  connectionDialog.showModal();
-}
-async function connectAPI(event) {
-  event.preventDefault(); if(busy)return; busy=true; const version=++sessionVersion;
-  const form=event.target, values=Object.fromEntries(new FormData(form));
-  const button=document.getElementById('submit-connection'); button.disabled=true;button.textContent='Connecting…';
-  document.getElementById('connection-error').textContent='';
-  try {
-    const nextClient=new HealthData.Client(values.origin);await nextClient.login(values.username,values.password);
-    const snapshot=await (values.dataset==='app'?nextClient.loadApp():nextClient.loadSynthetic());
-    if(version!==sessionVersion)return;
-    client=nextClient;commitSnapshot(snapshot);
-    document.getElementById('refresh-data').hidden=false;document.getElementById('return-demo').hidden=false;
-    form.reset();connectionDialog.close();render();toast('Connected. Showing data from the selected API dataset.');
-  } catch(error) { document.getElementById('connection-error').textContent=error.message; }
-  finally { busy=false;button.disabled=false;button.textContent='Sign in and load data'; }
-}
-async function refreshData() {
-  if(!client || busy)return;busy=true;const version=sessionVersion;
-  document.getElementById('refresh-data').disabled=true;
-  try {const snapshot=await (dataState.source==='api-app'?client.loadApp():client.loadSynthetic(dataState.mission.id));if(version===sessionVersion){commitSnapshot(snapshot);render();toast('API data refreshed.');}}
-  catch(error){toast(error.message);document.getElementById('connection-status').textContent='Refresh failed · displayed data may be stale';}
-  finally{busy=false;document.getElementById('refresh-data').disabled=false;}
-}
-function disconnect() {
-  sessionVersion++;if(client){client.token=null;client.user=null;}client=null;
-  document.getElementById('operations-dialog')?.close();
-  commitSnapshot(demoSnapshot());document.getElementById('refresh-data').hidden=true;document.getElementById('return-demo').hidden=true;render();toast('Disconnected. Returned explicitly to the demo dataset.');
-}
-document.getElementById('connect-api').addEventListener('click',openConnection);
-document.getElementById('refresh-data').addEventListener('click',refreshData);
-document.getElementById('return-demo').addEventListener('click',()=>{if(!busy)disconnect();});
-document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>{period=Number(b.dataset.period);document.querySelectorAll('[data-period]').forEach(p=>p.classList.toggle('selected',p===b));renderChart();}));
-document.getElementById('notifications').addEventListener('click',()=>toast('Source: '+(dataState.source==='demo'?'upstream demo snapshot':'authenticated API')+'. See the crew overview for general status.'));
-// Capture validation events so dynamic forms also use English browser messages.
-document.addEventListener('input', event => { if (event.target.setCustomValidity) event.target.setCustomValidity(''); });
-document.addEventListener('invalid', event => {
-  const field = event.target; field.setCustomValidity('');
-  if (field.validity.valueMissing) field.setCustomValidity('Please complete this field.');
-  else if (field.validity.badInput || field.validity.typeMismatch) field.setCustomValidity('Please enter a valid value.');
-  else if (field.validity.rangeUnderflow) field.setCustomValidity('Please enter a value of '+field.min+' or higher.');
-  else if (field.validity.rangeOverflow) field.setCustomValidity('Please enter a value of '+field.max+' or lower.');
-  else if (field.validity.stepMismatch) field.setCustomValidity('Please enter a value in increments of '+field.step+'.');
-}, true);
-render();

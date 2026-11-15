@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {aggregateCrewDay}=require('../crew-aggregate.js');
-const {blankMetrics}=require('../health-data.js');
+const {aggregateCrewDay}=require('../src/features/crew/crew-aggregate.js');
+const {blankMetrics}=require('../src/services/health-data.js');
 function person(id, readings){
   const metrics=blankMetrics();
   for(const [key,[value,missionDay,status]] of Object.entries(readings))metrics[key]={value,missionDay,status,unit:metrics[key].unit};
