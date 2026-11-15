@@ -40,7 +40,7 @@ All authenticated requests use `Authorization: Bearer <accessToken>`. JSON field
 | Ground crew overview | `GET /api/v1/app/ground/crew` |
 | Ground habitat readings | `GET /api/v1/app/ground/environment` |
 | List synthetic missions | `GET /api/v1/missions` |
-| Read synthetic daily history for the care team | `GET /api/v1/missions/{missionId}/astronauts/{astronautId}/daily?fromDay=1` |
+| Read synthetic daily history for the care team | `GET /api/v1/missions/{missionId}/astronauts/{astronautId}/daily?fromDay=-30&toDay={currentDay}` |
 | Ground synthetic overview | `GET /api/v1/missions/{missionId}/dashboard` |
 
 The dashboard does not connect directly to SQLite/PostgreSQL. Database passwords belong to the API, never to frontend configuration.
@@ -78,3 +78,9 @@ Unit and DOM-simulation tests are in `tests/health-data.test.cjs` and `tests/com
 `crew-aggregate.js` computes descriptive means only within the selected dataset and the current mission day. Each metric includes contributor count, total crew, range, and source flags. Pressure uses only crew with a complete same-day systolic/diastolic pair; both means share the same contributors. Missing values are not zero. Mood is always private and is never aggregated.
 
 The collective avatar is conceptual and represents no individual. Colors reflect the worst available individual metric flag, even if its reading is older and excluded from the mean; flag dates remain visible in individual details. Current summary and metric flags also feed the follow-up list and the summary counts. These are source flags, not new clinical classifications. Tests for these rules are in `tests/crew-aggregate.test.cjs`.
+
+## Mission impact API extension
+
+The synthetic source now reads the pre-flight window as well as mission history via `GET /api/v1/missions/{missionId}/astronauts/{astronautId}/daily?fromDay=-30&toDay={currentDay}` and the read-only `/baseline` endpoint. Monitoring still projects only flight-day values; the separate analysis object whitelists physical indicator codes, strips mood and discards day zero and records outside -30..-1 / 1..180. The backend baseline summary is retained as a source reference, while analysis statistics are recomputed from the raw fixed-window observations.
+
+The new Mission impact panel supports current API data and a separately labeled offline synthetic example. The app source has no complete 30-day pre-flight series and is explicitly unavailable for this comparison. See MISSION_IMPACT.md for formulas, interpretation limits, and coverage.

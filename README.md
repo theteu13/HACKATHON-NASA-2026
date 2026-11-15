@@ -41,7 +41,7 @@ There is no astronaut mode, personal copilot, family-message panel, or health-da
 With Node.js available:
 
 ```powershell
-node --test tests/health-data.test.cjs tests/command.test.cjs tests/crew-aggregate.test.cjs tests/avatar-behavior.test.cjs tests/avatar-needs.test.cjs
+node --test tests/health-data.test.cjs tests/command.test.cjs tests/crew-aggregate.test.cjs tests/avatar-behavior.test.cjs tests/avatar-needs.test.cjs tests/avatar-gaze.test.cjs tests/mission-impact.test.cjs
 ```
 
 Tests cover mappings, missing data, timestamps, privacy projections, role selection, read-only enforcement, rejected astronaut accounts, HTML escaping, and the simulator. Also verified against a fresh local upstream API with an isolated SQLite database: medical-account access to app and synthetic data, physical record reads, and rejected astronaut accounts. Browser visual review remains pending because the browser host was unavailable.
@@ -65,3 +65,13 @@ Pause motion applies to both avatars and persists while switching views or refre
 A clickable speech bubble highlights the highest-priority pending review. The individual view identifies that crew member; the collective view counts affected crew and lists prompts with a link to individual details. Prompts are recomputed on data refresh and disappear when their source conditions resolve.
 
 Prompts cover existing care-team source flags, same-day sleep below an explicit mission goal, incomplete recorded intake relative to the mission calorie goal, and missing supported daily readings. Nutrition prompts are informational because the day or meal logs may be incomplete. Missing records are not medical findings, and these prompts do not establish hunger, prescribe rest, or infer a treatment. No hydration or medication need is invented without supporting data. The dashboard remains read-only.
+
+## Mission impact: 30 days versus 180 days
+
+Open Mission impact from the sidebar. The first implementation compares days -30 to -1 with days 1 to 180 (or the available follow-up). Select the current monitoring dataset or the explicitly labeled bundled synthetic example, then choose a physical indicator and whole-crew or individual scope. Using the example changes only the analysis, never the monitored mission or avatar.
+
+The synthetic API supplies pre-flight daily records and its baseline reference endpoint. App records do not include the complete pre-flight series, so the analysis states that limitation rather than treating a single pre-flight reference as 30 measurements. The offline example is derived from the upstream samples CSV, contains 4 fictional crew and 840 physical daily records, and has simulated dates in 2027.
+
+Results include paired means, sample standard deviations, absolute/relative mean differences, variability ratios, standardized descriptive shifts, weekly trajectories, coverage counts, and neutral review points. Team comparisons use equal weights for the same paired crew. Celsius temperature differences are not expressed as percentages. Mood, missing values, launch day zero, out-of-window records and future follow-up are excluded. Sparse measurements are not imputed.
+
+These are observed associations in a simulated dataset, not causal mission effects, clinical classifications, or medical recommendations. Full formulas, eligibility rules and method references are expandable in the panel and documented in MISSION_IMPACT.md.

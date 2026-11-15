@@ -25,3 +25,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Mission impact example
+
+`impact-example.js` is a physical-only subset of [samples/synthetic_daily_vitals.csv](https://github.com/lzphellipe/nasa-space-software-health-crew/blob/7c7de46f2b2f21360f4a9fd027ad4c298522b618/samples/synthetic_daily_vitals.csv) from the same MIT-licensed repository and commit. Mood and day zero are excluded. The 4 fictional crew have 30 pre-flight days and 180 flight days each; dates in 2027 belong to the generated scenario and are not real observations. The upstream license above also applies to this derivative.

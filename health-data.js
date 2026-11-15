@@ -132,14 +132,27 @@
       if (!mission) throw new Error('No matching synthetic mission is available.');
       const path = '/api/v1/missions/' + encodeURIComponent(mission.id);
       const data = await this.request(path + '/dashboard');
+      const analysisPeople = [];
       const crew = await Promise.all(data.crew.map(async row => {
-        const daily = await this.request(path + '/astronauts/' + encodeURIComponent(row.astronaut.id) + '/daily?fromDay=1');
-        const person = syntheticPerson(row.astronaut,daily,{status:row.status});
+        const personalPath=path + '/astronauts/' + encodeURIComponent(row.astronaut.id);
+        const [allDays,baselineReference] = await Promise.all([
+          this.request(personalPath + '/daily?fromDay=-30&toDay=' + data.missionDay),
+          this.request(personalPath + '/baseline')
+        ]);
+        const impactEngine=typeof module!=='undefined'&&module.exports?require('./mission-impact.js'):global.MissionImpact;
+        const physical=impactEngine.physicalRecords(allDays);
+        analysisPeople.push({id:row.astronaut.id,name:row.astronaut.displayName,records:physical,
+          baselineReference:{fromDay:baselineReference.fromDay,toDay:baselineReference.toDay,
+            metrics:(baselineReference.metrics||[]).filter(m=>impactEngine.indicators.some(i=>i.code===m.metric))}});
+        const person = syntheticPerson(row.astronaut,allDays.filter(r=>r.missionDay>=1),{status:row.status});
         person.summary.activeAlerts = row.activeEpisodes || 0;
         person.metrics.mood = {value:null,unit:'/5',private:true};
         return person;
       }));
-      return { mission:{...normalizeMission(mission,true),today:data.missionDay},crew,summaries:[],environments:[],source:'api-synthetic' };
+      const normalized={...normalizeMission(mission,true),today:data.missionDay};
+      return { mission:normalized,crew,summaries:[],environments:[],source:'api-synthetic',
+        impact:{source:'api-synthetic',label:'Selected synthetic mission API',provenance:'SIMULATED_TELEMETRY',mission:normalized,
+          people:analysisPeople.sort((a,b)=>a.id.localeCompare(b.id)),reference:this.baseUrl+'/docs'}};
     }
   }
 
