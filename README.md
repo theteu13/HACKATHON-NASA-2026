@@ -1,43 +1,49 @@
-# CosmoMedic · Saúde da tripulação
+# CosmoMedic · Crew Health Dashboard
 
-Dashboard demonstrativo de monitoramento de astronautas, com a paleta Nebula Glass das referências visuais. Feito em HTML, CSS e JavaScript, sem dependências de build.
+A responsive English-language dashboard using the Nebula Glass palette, adapted to the actual [Crew Health API](https://github.com/lzphellipe/nasa-space-software-health-crew). Built with HTML, CSS, and JavaScript; no frontend build or package installation required.
 
-## Executar
+## Run
 
-Abra `index.html` no navegador ou, para usar um servidor local, execute na pasta do projeto:
+From this directory:
 
 ```powershell
 python -m http.server 4173 --bind 127.0.0.1
 ```
 
-Acesse http://127.0.0.1:4173. As fontes Sora e Inter usam Google Fonts; sem internet, a interface utiliza fontes alternativas locais.
+Open http://127.0.0.1:4173. In VS Code, select **CosmoMedic: Preview dashboard** and press F5. Google Fonts is optional; local fallback fonts work offline.
 
-## Funcionalidades
+## Connect the backend
 
-- Central de Comando com modos Astronauta e Controle em Terra.
-- Índice demonstrativo de prontidão, com fórmula visível e sem autorização de tarefas críticas.
-- Simulador de descanso de três dias, guardando rascunhos sem alterar escalas.
-- Controles simulados de iluminação, ruído branco e temperatura.
-- Copiloto com pausa cronometrada, indicação para consultar mobilidade aprovada e mensagem familiar fictícia.
-- Visão Terra com semáforo roteirizado e tendências coletivas; humor, diário e mensagens pessoais saem da interface.
-- Indicadores pessoais organizados em seção expansível; ferramentas abertas sob demanda.
+1. Start the upstream FastAPI backend according to its README (normally port 8000).
+2. Select **Connect API** in the dashboard. Enter the API origin, such as http://127.0.0.1:8000, without an /api suffix.
+3. Choose **CosmoMedic app** or **Synthetic mission** and sign in with an account belonging to that dataset.
+4. Your backend role selects Astronaut or Ground Control. Use **Refresh** to reload or **Disconnect** to return explicitly to demo data.
 
-- Seleção de três astronautas fictícios.
-- Pressão arterial, frequência cardíaca, glicemia, temperatura, sono e humor de 1 a 5.
-- Informações complementares de densidade óssea, nutrição e sistema imunológico.
-- Gráfico com períodos de 7 dias, 30 dias e missão, usando séries fictícias.
-- Formulário obrigatório para os seis indicadores, com validação de campos.
-- Registros salvos por astronauta no `localStorage` do navegador; os cartões mostram o último registro salvo.
-- Layout adaptável para desktop e celular.
+For local seeded development only, upstream defaults include Crew ID ORB3-ANA with PIN 2026 for the app; astronaut1 with password spaceapps2026 for synthetic data; and surgeon with that same demo password for the care team. These may be overridden by the backend configuration. They are public demo defaults, not production credentials.
 
-## Limites do protótipo
+For deployment, use HTTPS and configure backend CORS to allow the dashboard origin. The dashboard never needs database passwords, a JWT signing secret, or an admin API key. Access tokens remain in memory; page reload returns to the demo.
 
-Todos os perfis e valores iniciais são fictícios. A ilustração corporal é conceitual e não apresenta diagnóstico ou classificação clínica. O histórico do gráfico é demonstrativo; registros locais atualizam os cartões e o último ponto do gráfico. Não há sensores, backend, autenticação ou sincronização entre dispositivos. Use apenas dados fictícios: o armazenamento local não é adequado para informações médicas reais.
+## Data and behavior
 
-A troca de modos é uma demonstração de interface, não uma barreira de segurança: dados locais continuam acessíveis ao navegador. Consulte `INTEGRATION.md` para os limites e pontos de conexão com o programa.
+- Default demo uses the upstream Orbit-3 seed: four crew, canonical app IDs, typed logs, summaries, and environment readings. See [data attribution](data/NOTICE.md).
+- App API: pressure/pulse, sleep, mood, bone measurements and nutrition; save independent pressure, sleep, mood or bone-density logs.
+- Glucose, body temperature and white blood cells are absent from the app schema and explicitly labeled unsupported. The separate synthetic mission includes these values, with read-only access.
+- Values retain their source and measurement day. Missing values stay empty, and charts preserve missing-day gaps.
+- App summary scores come from the source; synthetic data does not invent a readiness score.
+- Ground mode renders general status, excluding intimate logs and messages. Actual server-side privacy limitations are documented in [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md).
+- Cabin readings are available to the ground team. Cabin commands and three-day rest planning remain clearly labeled local simulations.
+- Detailed personal metrics stay collapsed until needed.
 
-## Verificação
+Existing flat prototype records are not migrated or deleted. New demo-only typed logs use a separate localStorage key, cosmomedic-app-logs-v1. Use fictional data only in the demo. Demo seed scores are snapshots; local edits do not recompute the backend rules.
 
-Verificados: resposta HTTP 200, sintaxe JavaScript, renderização com DOM simulado, troca de astronauta, seleção de período, salvamento e exibição de registros. A validação visual e a interação em navegador real ficaram pendentes porque a ferramenta de prévia não estava disponível na sessão.
+## Validation
 
-Os testes da Central de Comando estão em `tests/command.test.cjs`: limites do índice, independência do humor, recuperação ilustrativa, mudança de modo, remoção de conteúdo pessoal e simulação sem modificar registros. Execute com `node --test tests/command.test.cjs` em um ambiente com Node.js. Nesta sessão, foram executados pelo runtime JavaScript disponível com DOM simulado.
+With Node.js available:
+
+```powershell
+node --test tests/health-data.test.cjs tests/command.test.cjs
+```
+
+Tests cover mappings, missing data, timestamps, privacy projections, role selection, canonical payloads, rejected writes, HTML escaping, and the simulator. Also verified against a fresh local upstream API with an isolated SQLite database: app/synthetic reads, four typed writes, ground access, and 403 restrictions. Browser visual review remains pending because the browser host was unavailable.
+
+See [BACKEND_CONTRACT.md](BACKEND_CONTRACT.md) for the exact mappings, endpoints, account namespaces, and integration limits.
