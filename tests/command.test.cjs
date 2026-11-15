@@ -176,3 +176,22 @@ test('home opens with a crew chart and visible avatar before the review controls
   run("crewFilter.search='not a crew member';renderTeamResults()");
   assert.ok(get('crew-summary').innerHTML.includes('all crew, independent of filters'));
 });
+
+test('avatars keep populated callouts and remove empty cards together with their connectors',()=>{
+  const {run}=setup();
+  run("selected.metrics.temperature={value:36.8,unit:'°C',missionDay:12};selected.metrics.nutrition={value:0,unit:'kcal',missionDay:12};selected.metrics.glucose={value:null,unit:'mg/dL'}");
+  const markup=run('bodyCalloutMarkup(selected.metrics)');
+  assert.ok(markup.cards.includes('Body temperature'));
+  assert.ok(markup.cards.includes('Heart rate'));
+  assert.ok(markup.cards.includes('Blood pressure'));
+  assert.ok(markup.cards.includes('Nutrition'));
+  assert.ok(!markup.cards.includes('Blood glucose'));
+  assert.ok(!markup.cards.includes('White blood cells'));
+  assert.equal((markup.cards.match(/<article /g)||[]).length,(markup.lines.match(/<polyline /g)||[]).length);
+  run('selected.metrics.diastolic.value=null');
+  assert.ok(!run('bodyCalloutMarkup(selected.metrics).cards').includes('Blood pressure'));
+  run('crew.forEach(person=>person.metrics.temperature={value:null,unit:"C"})');
+  const collective=run('bodyCalloutMarkup(aggregateCrewDay(crew,dataState.mission.today).metrics,true).cards');
+  assert.ok(collective.includes('temperature'));
+  assert.ok(collective.includes('No same-day data'));
+});

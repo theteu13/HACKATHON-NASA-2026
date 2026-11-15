@@ -18,7 +18,7 @@
   if(typeof module!=='undefined'&&module.exports){module.exports={describe};return;}
   global.CosmoAvatar={describe};
   const motionPreference=global.matchMedia?.('(prefers-reduced-motion: reduce)');
-  let paused=true;
+  let paused=false;
   global.applyAvatarBehaviors=function() {
     global.resetAvatarGaze?.();
     const reduced=!!motionPreference?.matches;

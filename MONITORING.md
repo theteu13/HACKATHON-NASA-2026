@@ -22,7 +22,7 @@ filters below do not change the whole-crew summary.
 
 The collective avatar is visible below the summary, and the individual avatar
 starts expanded. Source scores and rest demonstrations remain secondary. Motion
-is paused by default. Illustrations do not localize a medical condition. Small
+starts enabled, unless reduced motion is requested. Illustrations do not localize a medical condition. Small
 interface text uses a minimum of 13px, including notes, timestamps and labels.
 
 ## One status model

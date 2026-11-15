@@ -4,6 +4,10 @@ A read-only Ground Control dashboard for the care team, in English, using the Ne
 
 ## Run
 
+For users, the published dashboard requires only a browser and a shared link.
+Hosted HTTPS pages automatically load the API at the same origin. Deployment is
+prepared in `render.yaml`; see [public access and publishing](DEPLOY.md).
+
 The project includes a Python/FastAPI backend. To run the dashboard and API together:
 
 ```powershell
@@ -12,8 +16,8 @@ python -m venv .venv
 .\start-backend.ps1
 ```
 
-Open http://127.0.0.1:8000, select **Connect API**, choose the dataset and click
-**Load data**. There is no local account or login. Both bundled fictional datasets
+Open http://127.0.0.1:8000; the default dataset loads automatically.
+There is no local account or login. Both bundled fictional datasets
 are available through the API. API documentation is at http://127.0.0.1:8000/docs.
 See [backend setup and limits](backend/README.md).
 
@@ -126,7 +130,7 @@ main system. See [monitoring behavior and integration](MONITORING.md).
 
 Both avatars have routine, watch, review, and limited-data states. Movements follow existing general/metric source flags, including older flags; no numeric threshold or diagnosis is introduced. The collective avatar uses the highest-priority crew flag, never the average. Missing current-day coverage keeps the avatar neutral when there are no source flags. Psychological values are excluded.
 
-Motion starts paused. The motion control applies to both avatars and persists while switching views or refreshing data during the session. The browser reduced-motion preference disables animation. All motion uses CSS and existing SVG groups; no new requests, timers, or raster assets are required. Status labels remain visible when motion is paused or reduced. Actual visual animation review remains pending because browser access is unavailable in this environment.
+Motion starts enabled unless the browser requests reduced motion. The motion control applies to both avatars and persists while switching views or refreshing data during the session. The browser reduced-motion preference disables animation. All motion uses CSS and existing SVG groups; no new requests, timers, or raster assets are required. Status labels remain visible when motion is paused or reduced. Actual visual animation review remains pending because browser access is unavailable in this environment.
 
 ## Avatar review prompts
 
