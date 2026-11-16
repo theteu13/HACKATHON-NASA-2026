@@ -24,6 +24,29 @@ The manifest selects the free plan for a demonstration. Render's free web
 services sleep after inactivity; the first visit after a sleep can take longer.
 For a continuously available service, review the hosting plan with the owner.
 
+## Publish the frontend on Vercel
+
+The dashboard can also be hosted as a static Vercel site while the FastAPI
+backend remains on Render:
+
+1. Deploy the backend using the Render Blueprint steps above and copy its public
+   origin, such as `https://cosmomedic-dashboard.onrender.com` (without `/api`).
+2. Import this GitHub repository into Vercel. Keep the repository root as the
+   project root; `vercel.json` builds and publishes only `index.html`, `src/`,
+   and `data/`.
+3. In the Vercel project settings, add the `COSMOMEDIC_API_ORIGIN` environment
+   variable with the Render origin, then redeploy. Without this variable, the
+   Vercel site shows the bundled demo without trying to contact an API.
+4. In the Render service's environment settings, set
+   `COSMOMEDIC_ALLOWED_ORIGINS` to the exact Vercel site origin, for example
+   `https://cosmomedic.vercel.app` (no trailing slash), and redeploy the backend.
+5. Open the Vercel URL and confirm that the dashboard loads data. The API's
+   `/health` endpoint should respond at the Render URL.
+
+The Render origin and the Vercel origin must use HTTPS in production. Update
+`COSMOMEDIC_ALLOWED_ORIGINS` if the Vercel production domain changes. Preview
+deployments use different origins and are not allowed unless explicitly added.
+
 Official references: [FastAPI deployment](https://render.com/docs/deploy-fastapi),
 [Blueprint configuration](https://render.com/docs/blueprint-spec),
 [Python version](https://render.com/docs/python-version), and

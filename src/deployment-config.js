@@ -1,0 +1,1 @@
+window.COSMOMEDIC_CONFIG = {};

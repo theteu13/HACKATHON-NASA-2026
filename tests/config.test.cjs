@@ -26,3 +26,21 @@ test('main-system integration can override hosted source and automatic loading',
   assert.equal(value.autoConnect,false);
   assert.equal(value.getAccessToken,getAccessToken);
 });
+test('static deployment does not connect to its own origin without a configured API',()=>{
+  const value=config('https://cosmomedic.vercel.app/',{
+    staticDeployment:true,
+    apiOrigin:'http://127.0.0.1:8000',
+    autoConnect:false
+  });
+  assert.equal(value.apiOrigin,'http://127.0.0.1:8000');
+  assert.equal(value.autoConnect,false);
+});
+test('static deployment connects automatically when its API origin is configured',()=>{
+  const value=config('https://cosmomedic.vercel.app/',{
+    staticDeployment:true,
+    apiOrigin:'https://cosmomedic-api.onrender.com',
+    autoConnect:true
+  });
+  assert.equal(value.apiOrigin,'https://cosmomedic-api.onrender.com');
+  assert.equal(value.autoConnect,true);
+});
