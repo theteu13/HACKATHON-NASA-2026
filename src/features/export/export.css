@@ -1,0 +1,53 @@
+.export-pdf-button {
+  flex-shrink: 0;
+  padding: 12px 18px;
+  border: 1px solid var(--lilac);
+  border-radius: 10px;
+  background: #887cff20;
+  color: var(--text);
+  font-weight: 600;
+}
+.export-pdf-button:hover { background: #887cff40; }
+.export-pdf-button:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
+.page-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.export-stamp { display: none; }
+
+@page { size: A4 landscape; margin: 12mm; }
+@media print {
+  html, body { width: auto; height: auto; overflow: visible; }
+  body { background: var(--bg); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  *, *::before, *::after { animation: none !important; transition: none !important; box-shadow: none !important; }
+  .sidebar, .topbar, button, dialog, #toast, .scope-switch, .period-control,
+  .avatar-needs-button, .secondary-learning, #cabin-tools { display: none !important; }
+  [hidden] { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; max-width: none; width: 100%; }
+  .page-heading { margin: 0 0 12px; padding: 0; }
+  .page-heading h1 { font-size: 26px; }
+  .export-stamp { display: block; color: var(--muted); font-size: 10px; line-height: 1.5; margin-bottom: 18px; }
+  .panel, .metric, .team-kpi { background: #171633; border-color: #565174; }
+  .mission-summary, .metric, .team-kpi, .review-queue-item, .trend-statistics, tr,
+  .body-panel, .crew-summary-chart, .crew-status-distribution { break-inside: avoid; }
+  h1, h2, h3, summary, caption, .panel-heading { break-after: avoid; }
+  .team-table-scroll, .trend-data-scroll, .monitoring-chart-scroll, .impact-table-scroll {
+    overflow: visible !important; max-height: none !important; max-width: none !important;
+  }
+  .team-comparison table { min-width: 0; width: 100%; table-layout: fixed; }
+  .team-comparison thead th, .team-comparison td { min-width: 0; padding: 8px; }
+  .team-comparison th, .team-comparison td, .team-comparison td>small,
+  .team-comparison tbody th>strong, .team-comparison tbody th>small { font-size: 10px; overflow-wrap: anywhere; }
+  .team-comparison .reading-cell>strong { font-size: 14px; white-space: normal; }
+  .team-comparison .reading-unit, .team-comparison .monitor-status { font-size: 10px; }
+  .impact-table-scroll table, .trend-data table { min-width: 0; width: 100%; table-layout: fixed; }
+  .impact-table-scroll th, .impact-table-scroll td, .trend-data th, .trend-data td {
+    padding: 6px; font-size: 10px; white-space: normal; overflow-wrap: anywhere;
+  }
+  thead { display: table-header-group; }
+  .team-comparison thead th { position: static; }
+  .monitoring-chart-scroll .monitoring-trend { min-width: 0; }
+  .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .body-panel { display: block; }
+  .crew-summary-layout { grid-template-columns: minmax(0, 1.9fr) minmax(220px, 1fr); }
+  .crew-status-distribution { display: block; }
+  .crew-status-row { margin-bottom: 16px; }
+  footer { margin-top: 20px; }
+}

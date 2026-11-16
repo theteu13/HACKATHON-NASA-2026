@@ -49,6 +49,12 @@ For deployment, use HTTPS and configure backend CORS to allow the dashboard orig
 
 ## Data and behavior
 
+Use **Export PDF** to open the browser print dialog and choose **Save as PDF**.
+The landscape A4 layout includes the current monitoring scope, filters, and open
+sections, with charts and unscrolled reading tables. Expand any additional sections
+before exporting. The report records its export time in UTC; source measurement
+times remain visible. PDF export works locally without an additional service.
+
 - Default demo uses the upstream Orbit-3 seed: four crew, canonical app IDs, typed logs, summaries, and environment readings. See [data attribution](data/NOTICE.md).
 - App API: read received pressure/pulse, sleep, bone measurements, and nutrition through care-team endpoints. No check-in or health-data write actions.
 - Glucose, body temperature and white blood cells are absent from the app schema and explicitly labeled unsupported. The separate synthetic mission includes these values, with read-only access.
